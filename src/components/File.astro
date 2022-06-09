@@ -1,0 +1,11 @@
+---
+import { dedent } from './utils';
+export interface Props {
+    name: string;
+}
+const { name } = Astro.props;
+const content = await Astro.slots.render('default');
+const code = dedent(content);
+---
+
+<Fragment set:html={JSON.stringify({ name, code })} />

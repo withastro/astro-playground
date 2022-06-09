@@ -1,0 +1,11 @@
+---
+import { createDirectory } from './utils';
+export interface Props {
+    name: string;
+}
+const { name } = Astro.props;
+const content = await Astro.slots.render('default');
+const files = createDirectory(name, content);
+---
+
+<Fragment set:html={JSON.stringify(files)} />

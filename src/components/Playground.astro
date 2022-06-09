@@ -1,0 +1,226 @@
+---
+import { createDirectory, safe } from './utils';
+export interface Props {
+    syncView?: boolean;
+}
+const { syncView } = Astro.props;
+const content = await Astro.slots.render('default');
+const files = createDirectory('/', content);
+const data = safe(JSON.stringify(files));
+const lines = files[0].code.split('\n').length;
+const height = lines < 12 ? (lines * 22) + 12 : null;
+const id = Math.floor(Math.random() * 10000);
+---
+
+<div class="playground" data-playground data-sync-view={syncView} style={height ? `--playground-content-height: ${height}px` : undefined}>
+    <header class="playground-header" data-nav>
+        <ul role="tablist" class="files">
+            {files.map((file, i) => (
+                <li><button role="tab" aria-selected={i === 0} aria-controls={`editor-${id}`} class="file" data-file={file.name}>{file.name.replace(/^\//, '')}</button></li>
+            ))}
+        </ul>
+        <div>
+            <!-- <button data-action="download">Download</button> -->
+            <button data-action="reset">
+                <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="16" height="16" aria-hidden="true" role="img" class="iconify iconify--ri" preserveAspectRatio="xMidYMid meet" viewBox="0 0 24 24"><title>Refresh</title><path fill="currentColor" d="M5.463 4.433A9.961 9.961 0 0 1 12 2c5.523 0 10 4.477 10 10c0 2.136-.67 4.116-1.81 5.74L17 12h3A8 8 0 0 0 6.46 6.228l-.997-1.795zm13.074 15.134A9.961 9.961 0 0 1 12 22C6.477 22 2 17.523 2 12c0-2.136.67-4.116 1.81-5.74L7 12H4a8 8 0 0 0 13.54 5.772l.997 1.795z"></path></svg>
+            </button>
+        </div>
+    </header>
+    <div data-editor id={`editor-${id}`} class="editor"></div>
+    <div data-spacer class="spacer"></div>
+    <div class="preview-container loading">
+        <iframe data-preview class="preview"></iframe>
+        <div class="loader">
+            <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--ri" width="32" height="32" preserveAspectRatio="xMidYMid meet" viewBox="0 0 24 24"><path fill="currentColor" d="M18.364 5.636L16.95 7.05A7 7 0 1 0 19 12h2a9 9 0 1 1-2.636-6.364z"></path></svg>
+        </div>
+    </div>
+    <script data-files type="application/json" set:html={data} />
+</div>
+
+
+<script>
+if ('requestIdleCallback' in window) {
+    requestIdleCallback(async () => {
+        await import('./playground.ts').then(({ default: setup }) => setup())
+    })
+} else {
+    setTimeout(async () => {
+        await import('./playground.ts').then(({ default: setup }) => setup())
+    }, 200)
+}
+</script>
+
+<style>
+.playground {
+    --playground-padding-inline: 0.5rem;
+    --playground-padding-block: 0.5rem;
+    --playground-spacer-size: 1rem;
+    --playground-border-color: #ccc;
+    --playground-accent-color: #3b82f6;
+    --playground-border-radius: 8px;
+    accent-color: var(--playground-accent-color);
+    color-scheme: var(--playground-color-scheme, inherit);
+    border-radius: var(--playground-border-radius, 8px);
+    border: 1px solid var(--playground-border-color);
+    display: grid;
+    grid-template-rows: 40px var(--playground-content-height, 256px) var(--playground-spacer-size) var(--playground-content-height, 256px);
+    gap: 0.25rem;
+    padding: var(--playground-padding-block) var(--playground-padding-inline);
+    max-width: 100vw;
+}
+.spacer {
+    --deg: 180deg;
+    width: calc(100% + (var(--playground-padding-inline) * 2));
+    margin: 0 calc(var(--playground-padding-inline) * -1);
+    height: var(--playground-spacer-size);
+    background: linear-gradient(var(--deg), transparent, transparent calc(50% - 1px), var(--playground-border-color), var(--playground-border-color) 50%, transparent calc(50% + 1px), transparent);
+}
+@media screen and (min-width: 960px) {
+    .playground {
+        grid-template-rows: 40px var(--playground-content-height, 256px);
+        grid-template-columns: 1fr var(--playground-spacer-size) 1fr;
+    }
+    header {
+        grid-column: 1 / -1;
+    }
+    .spacer {
+        --deg: 90deg;
+        height: calc(100% + (var(--playground-padding-block) * 1.5));
+        margin: 0;
+        margin-top: calc(var(--playground-padding-block) * -0.5);
+        margin-bottom: calc(var(--playground-padding-block) * -1);
+        width: var(--playground-spacer-size);
+    }
+}
+.preview-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.loading .loader {
+    opacity: 1;
+}
+.loader {
+    position: absolute;
+    --size: 32px;
+    width: var(--size);
+    height: var(--size);
+    margin: auto;
+    pointer-events: none;
+    color: var(--playground-border-color);
+    opacity: 0;
+    transition: opacity 200ms ease-out;
+    animation: spin 1s cubic-bezier(0.445, 0.05, 0.55, 0.95) infinite;
+}
+[data-preview] {
+    opacity: 0;
+    transition: opacity 300ms ease-out;
+}
+button[data-action] {
+    border: none;
+    background: transparent;
+    opacity: 0.5;
+    cursor: pointer;
+    color: currentColor;
+}
+button[data-action="reset"] {
+    margin: 0;
+    padding: 0.5rem;
+    --size: 2rem;
+    width: var(--size);
+    height: var(--size);
+    transform-origin: center center;
+    border-radius: 100vmax;
+}
+button[data-action]:is(:hover, :focus) {
+    opacity: 1;
+}
+button[data-action]:active {
+    opacity: 1;
+    color: var(--playground-accent-color);
+    animation: spin 400ms ease-in-out;
+}
+
+.editor {
+    width: 100%;
+}
+:global(.monaco-editor) {
+    width: 100%;
+}
+:global(.reference-error) {
+    position: relative;
+    color: red !important;
+    background: rgba(255, 0, 0, 0.1);
+}
+:global(.reference-error::after) {
+    content: ' ';
+    display: inline-block;
+    position: absolute;
+    inset: 0;
+    padding-bottom: 1px;
+    border-bottom: 1px solid red;
+}
+:global(.error-marker) {
+    position: relative;
+    color: red;
+}
+:global(.error-marker::before) {
+    content: "!";
+}
+.files {
+    display: flex;
+    align-items: flex-end;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    margin-bottom: -1px;
+    height: 100%;
+}
+.file {
+    font-size: 1.125rem;
+    padding: 0.5rem;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    border-top-left-radius: calc(var(--playground-border-radius) * 0.67);
+    border-top-right-radius: calc(var(--playground-border-radius) * 0.67);
+    overflow: hidden;
+}
+.file[aria-selected] {
+    position: relative;
+    border-color: var(--playground-accent-color);
+}
+.file[aria-selected]::before {
+    position: absolute;
+    content: '';
+    display: block;
+    inset: 0;
+    background: var(--playground-accent-color);
+    opacity: 0.2;
+    pointer-events: none;
+}
+header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: calc(var(--playground-padding-block) * -1) calc(var(--playground-padding-inline) * -1) 0;
+    padding: 0 var(--playground-padding-inline);
+    border-bottom: 1px solid var(--playground-border-color);
+}
+iframe {
+    border: none;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+}
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+</style>
