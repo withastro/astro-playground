@@ -1,11 +1,12 @@
 ---
-import { createDirectory, safe } from './utils';
+import { createDirectory, safe } from '../scripts/utils';
 export interface Props {
     syncView?: boolean;
 }
 const { syncView } = Astro.props;
 const content = await Astro.slots.render('default');
 const files = createDirectory('/', content);
+console.log(files)
 const data = safe(JSON.stringify(files));
 const lines = files[0].code.split('\n').length;
 const height = lines < 12 ? (lines * 22) + 12 : null;
@@ -19,7 +20,7 @@ const id = Math.floor(Math.random() * 10000);
                 <li><button role="tab" aria-selected={i === 0} aria-controls={`editor-${id}`} class="file" data-file={file.name}>{file.name.replace(/^\//, '')}</button></li>
             ))}
         </ul>
-        <div>
+        <div class="actions">
             <!-- <button data-action="download">Download</button> -->
             <button data-action="reset">
                 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="16" height="16" aria-hidden="true" role="img" class="iconify iconify--ri" preserveAspectRatio="xMidYMid meet" viewBox="0 0 24 24"><title>Refresh</title><path fill="currentColor" d="M5.463 4.433A9.961 9.961 0 0 1 12 2c5.523 0 10 4.477 10 10c0 2.136-.67 4.116-1.81 5.74L17 12h3A8 8 0 0 0 6.46 6.228l-.997-1.795zm13.074 15.134A9.961 9.961 0 0 1 12 22C6.477 22 2 17.523 2 12c0-2.136.67-4.116 1.81-5.74L7 12H4a8 8 0 0 0 13.54 5.772l.997 1.795z"></path></svg>
@@ -36,19 +37,6 @@ const id = Math.floor(Math.random() * 10000);
     </div>
     <script data-files type="application/json" set:html={data} />
 </div>
-
-
-<script>
-if ('requestIdleCallback' in window) {
-    requestIdleCallback(async () => {
-        await import('./playground.ts').then(({ default: setup }) => setup())
-    })
-} else {
-    setTimeout(async () => {
-        await import('./playground.ts').then(({ default: setup }) => setup())
-    }, 200)
-}
-</script>
 
 <style>
 .playground {
@@ -176,6 +164,7 @@ button[data-action]:active {
     margin: 0;
     margin-bottom: -1px;
     height: 100%;
+    max-width: 100%;
 }
 .file {
     font-size: 1.125rem;
@@ -202,12 +191,27 @@ button[data-action]:active {
     pointer-events: none;
 }
 header {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: space-between;
     margin: calc(var(--playground-padding-block) * -1) calc(var(--playground-padding-inline) * -1) 0;
     padding: 0 var(--playground-padding-inline);
     border-bottom: 1px solid var(--playground-border-color);
+    overflow: hidden;
+    border-top-left-radius: var(--playground-border-radius);
+    border-top-right-radius: var(--playground-border-radius);
+}
+.actions {
+    background: white;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 var(--playground-padding-inline);
 }
 iframe {
     border: none;

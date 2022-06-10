@@ -1,5 +1,5 @@
 import type * as monaco from 'monaco-editor';
-import { languages, editor } from 'monaco-editor';
+import { languages } from 'monaco-editor';
 
 const languageConfiguration: monaco.languages.LanguageConfiguration = {
   comments: {

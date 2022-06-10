@@ -327,7 +327,7 @@ function syncState(state: State) {
     }
     updateClients({ files });
   }, 30);
-  editor.onDidChangeModelContent(debounce(update, 400));
+  editor.onDidChangeModelContent(debounce(update, 300));
   sandpack.listen((msg) => {
     switch (msg.type) {
       case "status": {

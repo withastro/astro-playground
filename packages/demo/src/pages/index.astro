@@ -1,7 +1,5 @@
 ---
-import Playground from '../components/Playground.astro';
-import File from '../components/File.astro';
-import Directory from '../components/Directory.astro';
+import { Playground, File, Directory } from '@astrojs/playground';
 ---
 
 <html lang="en">
@@ -25,6 +23,7 @@ import Directory from '../components/Directory.astro';
 				margin: 0 auto;
 			}
 		</style>
+		<script src="@astrojs/playground/client.js"></script>
 	</head>
 
 	<body>

@@ -1,0 +1,40 @@
+{
+  "name": "@astrojs/playground",
+  "type": "module",
+  "version": "0.0.1",
+  "main": "./index.js",
+  "license": "MIT",
+  "author": {
+    "name": "Astro"
+  },
+  "repository": {
+    "directory": "packages/core",
+    "url": "https://github.com/withastro/astro-playground"
+  },
+  "exports": {
+    ".": "./index.js",
+    "./client.js": "./client.js",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "@codesandbox/sandpack-client": "^1.1.3",
+    "emmet": "^2.3.6",
+    "emmet-monaco-es": "^5.1.0",
+    "monaco-editor": "^0.33.0"
+  },
+  "peerDependencies": {
+    "astro": "^1.0.0-beta.42"
+  },
+  "keywords": [
+    "astro-component",
+    "editor",
+    "preview",
+    "playground"
+  ]
+}

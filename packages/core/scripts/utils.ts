@@ -30,7 +30,7 @@ export function createDirectory(name: string, content: string) {
             return JSON.parse(`[${content}]`)
         } catch (e) {
             // Recursively correct arrays
-            const msg = /Unexpected token . in JSON at position (\d+)/.exec(e.message).at(1)
+            const msg = /Unexpected token . in JSON at position (\d+)/.exec(e.message)?.at(1) 
             if (msg) {
                 const pos = Number.parseInt(msg) - 1;
                 return parse(`[${content.slice(0, pos)},${content.slice(pos)}]`)
