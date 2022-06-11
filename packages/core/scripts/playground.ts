@@ -1,14 +1,17 @@
 import "../lib/monaco";
-import { DEFAULT_STYLES } from './utils';
-import { SandpackClient, SandpackErrorMessage, SandpackMessage } from "@codesandbox/sandpack-client";
+import { DEFAULT_STYLES } from "./utils";
+import {
+  SandpackBundlerFiles,
+  SandpackClient,
+  SandpackErrorMessage,
+  SandpackMessage,
+} from "@codesandbox/sandpack-client";
 // @ts-ignore
 import { initialize as loadAstro, transform } from "@astrojs/compiler";
 import astroWASM from "@astrojs/compiler/astro.wasm?url";
 import * as monaco from "monaco-editor";
 
-await Promise.all([
-  loadAstro({ wasmURL: astroWASM })
-]);
+await Promise.all([loadAstro({ wasmURL: astroWASM })]);
 
 export default function setup() {
   for (const playground of document.querySelectorAll("[data-playground]")) {
@@ -50,20 +53,43 @@ async function init(root: HTMLElement) {
       monaco.Uri.from({ scheme: `playground-${id}`, path: file.name })
     )
   );
-  const editor = await setupEditor(elements.editor, models[0]);
-  const files = await Promise.all(
-    initialFiles.map((file) => {
-      if (!file.name.endsWith(".astro")) return file;
-      return transform(file.code, {
-        pathname: file.name,
-        sourcefile: file.name,
-        site: "https://localhost:3000/",
-        projectRoot: "file://",
-        sourcemap: 'inline'
-      }).then(({ code }) => ({ name: `${file.name}.js`, code }));
-    })
+  // Kick this off as early as possible
+  const sandpack = new SandpackClient(
+    elements.preview,
+    {
+      template: "vanilla-ts",
+      files: {
+        "/index.js": {
+          code: "/* loading... */",
+        },
+      },
+      entry: "/index.js",
+      dependencies: {
+        astro: "latest",
+      },
+    },
+    {
+      showErrorScreen: false,
+      showLoadingScreen: false,
+      showOpenInCodeSandbox: false,
+    }
   );
-  const sandpack = setupSandpack(elements.preview, files);
+  const [editor, files] = await Promise.all([
+    setupEditor(elements.editor, models[0]),
+    Promise.all(
+      initialFiles.map((file) => {
+        if (!file.name.endsWith(".astro")) return file;
+        return transform(file.code, {
+          pathname: file.name,
+          sourcefile: file.name,
+          site: "https://localhost:3000/",
+          projectRoot: "file://",
+          sourcemap: "inline",
+        }).then(({ code }) => ({ name: `${file.name}.js`, code }))
+      })
+    )
+  ]);
+  setupSandpack(elements.preview, sandpack, files)
   const state: State = {
     reset: () => {
       initialFiles.forEach((file) => {
@@ -84,7 +110,7 @@ async function init(root: HTMLElement) {
     elements,
     editor,
     sandpack,
-    activePath: normalizePath(files[0].name),
+    activePath: normalizePath(initialFiles[0].name),
     models,
   };
   syncState(state);
@@ -92,7 +118,10 @@ async function init(root: HTMLElement) {
   resize(state);
 }
 
-async function setupEditor(element: HTMLElement, model: monaco.editor.ITextModel) {
+async function setupEditor(
+  element: HTMLElement,
+  model: monaco.editor.ITextModel
+) {
   const isDark = window.getComputedStyle(element)["colorScheme"] === "dark";
   const editor = monaco.editor.create(element, {
     model: model,
@@ -102,16 +131,16 @@ async function setupEditor(element: HTMLElement, model: monaco.editor.ITextModel
     fontSize: 17,
     lineHeight: 22,
     renderLineHighlight: "none",
-    autoIndent: 'brackets',
+    autoIndent: "brackets",
     hideCursorInOverviewRuler: true,
     minimap: {
       enabled: false,
     },
     bracketPairColorization: {
-        enabled: true,
+      enabled: true,
     },
     parameterHints: {
-        enabled: true,
+      enabled: true,
     },
     wordWrap: "off",
     roundedSelection: true,
@@ -119,7 +148,7 @@ async function setupEditor(element: HTMLElement, model: monaco.editor.ITextModel
     overviewRulerBorder: false,
     scrollbar: {
       useShadows: false,
-      vertical: 'hidden',
+      vertical: "hidden",
       verticalScrollbarSize: 10,
       horizontalScrollbarSize: 10,
     },
@@ -134,10 +163,11 @@ async function setupEditor(element: HTMLElement, model: monaco.editor.ITextModel
 
 function setupSandpack(
   element: HTMLIFrameElement,
+  sandpack: SandpackClient,
   input: { name: string; code: string }[]
 ) {
   const entry = input[0];
-  const files = {};
+  const files: SandpackBundlerFiles = {};
 
   const accentColor = window.getComputedStyle(element)["accentColor"];
   const colorScheme = window.getComputedStyle(element)["colorScheme"];
@@ -153,6 +183,7 @@ function setupSandpack(
 
   files["/@virtual/entry.js"] = {
     code: `export { default as Component } from "${entry.name}"`,
+    readOnly: true,
   };
 
   for (const file of input) {
@@ -183,9 +214,10 @@ function setupSandpack(
             result.scripts.clear();
             return head + html;
           }
-          return html ?? ${JSON.stringify(entry.code)};
+          return html ?? '';
       }
     `,
+    readOnly: true,
   };
 
   files["/index.js"] = {
@@ -207,31 +239,18 @@ function setupSandpack(
         }
       })()
     `,
+    readOnly: true,
   };
 
-  return new SandpackClient(
-    element,
-    {
-      template: "vanilla-ts",
-      files,
-      entry: "/index.js",
-      dependencies: {
-        astro: "latest",
-      },
-    },
-    {
-      showErrorScreen: false,
-      showLoadingScreen: false,
-      showOpenInCodeSandbox: false,
-    }
-  );
+  sandpack.updatePreview({
+    files
+  });
 }
 
 function nav(state: State) {
   const {
     models,
     editor,
-    sandpack,
     elements: { nav: element },
   } = state;
   function updatePath(e: Event) {
@@ -269,6 +288,7 @@ function nav(state: State) {
 function resize({ editor, elements }: State) {
   const media = window.matchMedia("(min-width: 960px)");
   let multiplier = media.matches ? 0.5 : 1;
+  let screenHeight = window.innerHeight;
   media.addEventListener("change", ({ matches }) => {
     if (matches) {
       multiplier = 0.5;
@@ -277,17 +297,22 @@ function resize({ editor, elements }: State) {
     }
   });
   const ro = new ResizeObserver(([entry]) => {
+    screenHeight = window.innerHeight;
     const { height } = editor.getLayoutInfo();
     editor.layout({ width: entry.contentRect.width * multiplier - 16, height });
   });
   ro.observe(elements.editor.parentElement ?? elements.editor);
 
+
   function autogrow() {
     const { width } = editor.getLayoutInfo();
     const lines = editor.getModel().getLineCount();
-    const height = (lines * 22) + 12;
+    const height = Math.max(Math.min(lines * 22 + 12, screenHeight * 0.8), 192);
     editor.layout({ width, height });
-    elements.root.style.setProperty(`--playground-content-height`, `${height}px`);
+    elements.root.style.setProperty(
+      `--playground-content-height`,
+      `${height}px`
+    );
   }
   editor.onDidChangeModelContent(autogrow);
   editor.onDidChangeModel(autogrow);
@@ -312,11 +337,11 @@ function syncState(state: State) {
         sourcefile: state.activePath,
         site: "https://localhost:3000/",
         projectRoot: "file://",
-        sourcemap: 'inline'
+        sourcemap: "inline",
       });
       const id = `${activePath}.js`;
       files[id] = { code: res.code };
-      if (elements.root.hasAttribute('data-sync-view')) {
+      if (elements.root.hasAttribute("data-sync-view")) {
         files["/@virtual/entry.js"] = {
           code: `export { default as Component } from "${id}"`,
         };
@@ -332,13 +357,14 @@ function syncState(state: State) {
     switch (msg.type) {
       case "status": {
         if (msg.status === "idle") {
-          if (elements.preview.parentElement.classList.contains('loading')) {
-            const loader = elements.preview.parentElement.querySelector('.loader');
-            elements.preview.parentElement.classList.remove('loading');
+          if (elements.preview.parentElement.classList.contains("loading")) {
+            const loader =
+              elements.preview.parentElement.querySelector(".loader");
+            elements.preview.parentElement.classList.remove("loading");
             setTimeout(() => {
               loader.remove();
             }, 500);
-          } 
+          }
           elements.preview.style.setProperty("opacity", "1");
           clearErrors();
         }
@@ -353,14 +379,14 @@ function syncState(state: State) {
     }
   });
 
-  let decorations: string[] = []
+  let decorations: string[] = [];
   function surfaceError(msg: SandpackMessage & SandpackErrorMessage) {
     if (normalizePath(msg.path) !== state.activePath) return;
-    
-    const newDecorations: monaco.editor.IModelDeltaDecoration[] = []
+
+    const newDecorations: monaco.editor.IModelDeltaDecoration[] = [];
     let loc: [number, number, number, number] = [0, 0, 0, 0];
     let opts: monaco.editor.IModelDecorationOptions = {};
-    if (msg.title === 'ReferenceError') {
+    if (msg.title === "ReferenceError") {
       const len = /^(\w+) is not/.exec(msg.message).at(1).length + 1;
       newDecorations.push({
         range: new monaco.Range(
@@ -370,31 +396,31 @@ function syncState(state: State) {
           msg.column + len
         ),
         options: {
-          className: 'error reference-error'
-        }
+          className: "error reference-error",
+        },
       });
       newDecorations.push({
         range: new monaco.Range(msg.line, msg.column, msg.line, msg.column),
         options: {
           isWholeLine: true,
-          className: 'has-error',
-          linesDecorationsClassName: 'error-marker'
-        }
-      })
+          className: "has-error",
+          linesDecorationsClassName: "error-marker",
+        },
+      });
     } else {
       loc = [
         msg.line,
         msg.column,
         msg.lineEnd ?? msg.line,
-        msg.columnEnd ?? msg.column + 1
-      ]
-      opts.inlineClassName = 'error reference-error';
+        msg.columnEnd ?? msg.column + 1,
+      ];
+      opts.inlineClassName = "error reference-error";
     }
     newDecorations.push({
       range: new monaco.Range(...loc),
       options: {
-        inlineClassName: 'decoration-error'
-      }
+        inlineClassName: "decoration-error",
+      },
     });
     decorations = editor.deltaDecorations(decorations, newDecorations);
   }
@@ -429,7 +455,7 @@ function syncState(state: State) {
 }
 
 function normalizePath(path: string) {
-  return path.replace('.astro.js', '.astro')
+  return path.replace(".astro.js", ".astro");
 }
 
 function debounce(func, timeout = 300) {
