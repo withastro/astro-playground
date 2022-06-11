@@ -6,7 +6,6 @@ export interface Props {
 const { syncView } = Astro.props;
 const content = await Astro.slots.render('default');
 const files = createDirectory('/', content);
-console.log(files)
 const data = safe(JSON.stringify(files));
 const lines = files[0].code.split('\n').length;
 const height = lines < 12 ? (lines * 22) + 12 : null;
@@ -51,7 +50,7 @@ const id = Math.floor(Math.random() * 10000);
     border-radius: var(--playground-border-radius, 8px);
     border: 1px solid var(--playground-border-color);
     display: grid;
-    grid-template-rows: 40px var(--playground-content-height, 256px) var(--playground-spacer-size) var(--playground-content-height, 256px);
+    grid-template-rows: 40px var(--playground-content-height, 256px) var(--playground-spacer-size) clamp(192px, var(--playground-content-height, 256px), 320px);
     gap: 0.25rem;
     padding: var(--playground-padding-block) var(--playground-padding-inline);
     max-width: 100vw;
@@ -65,7 +64,7 @@ const id = Math.floor(Math.random() * 10000);
 }
 @media screen and (min-width: 960px) {
     .playground {
-        grid-template-rows: 40px var(--playground-content-height, 256px);
+        grid-template-rows: 40px clamp(192px, var(--playground-content-height, 256px), 80vh);
         grid-template-columns: 1fr var(--playground-spacer-size) 1fr;
     }
     header {
