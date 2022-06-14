@@ -1,3 +1,7 @@
+if (import.meta.env.MODE !== 'production') {
+    window['@astrojs/playground'] = true;
+}
+
 async function load() {
     await import('./scripts/playground.ts').then(({ default: setup }) => setup())
 }

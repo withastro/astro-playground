@@ -29,13 +29,25 @@ const id = Math.floor(Math.random() * 10000);
     <div data-editor id={`editor-${id}`} class="editor"></div>
     <div data-spacer class="spacer"></div>
     <div class="preview-container loading">
-        <iframe data-preview class="preview"></iframe>
+        <iframe data-preview class="preview" allow="accelerometer; camera; encrypted-media; display-capture; geolocation; gyroscope; microphone; midi; clipboard-read; clipboard-write; web-share" sandbox="allow-forms allow-modals allow-pointer-lock allow-popups allow-same-origin allow-scripts allow-top-navigation-by-user-activation allow-downloads allow-presentation" loading="lazy"></iframe>
         <div class="loader">
             <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--ri" width="32" height="32" preserveAspectRatio="xMidYMid meet" viewBox="0 0 24 24"><path fill="currentColor" d="M18.364 5.636L16.95 7.05A7 7 0 1 0 19 12h2a9 9 0 1 1-2.636-6.364z"></path></svg>
         </div>
     </div>
     <script data-files type="application/json" set:html={data} />
 </div>
+
+{import.meta.env.MODE !== 'production' && (
+    <script type="module" is:inline>
+        if (!window['@astrojs/playground'] && window['@astrojs/playground'] !== 0) {
+            window['@astrojs/playground'] = 0;
+            document.querySelectorAll('[data-playground]').forEach(playground => {
+                playground.dataset.error = true;
+            })
+            throw new Error(`@astrojs/playground has not been initialized! Be sure to add <script src="@astrojs/playground/client.js" /> to this page.`);
+        }
+    </script>
+)}
 
 <style>
 .playground {
@@ -54,6 +66,10 @@ const id = Math.floor(Math.random() * 10000);
     gap: 0.25rem;
     padding: var(--playground-padding-block) var(--playground-padding-inline);
     max-width: 100vw;
+}
+.playground[data-error] {
+    --playground-border-color: red;
+    background: rgba(255, 0, 0, 0.25);
 }
 .spacer {
     --deg: 180deg;
@@ -202,7 +218,6 @@ header {
     border-top-right-radius: var(--playground-border-radius);
 }
 .actions {
-    background: white;
     position: absolute;
     top: 0;
     bottom: 0;
