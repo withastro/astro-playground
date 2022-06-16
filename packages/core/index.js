@@ -1,3 +1,20 @@
-export { default as Directory } from './components/Directory.astro';
-export { default as File } from './components/File.astro';
-export { default as Playground } from './components/Playground.astro';
+export default function integration() {
+    return {
+        name: '@astrojs/playground',
+        hooks: {
+            'astro:config:setup': ({ injectRoute }) => {
+				injectRoute({
+                    pattern: '/_api/playground',
+                    entryPoint: '@astrojs/playground/routes/api.ts'
+                })
+            },
+            'astro:server:setup': ({ server }) => {
+                server.middlewares.use((req, res, next) => {
+                    res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+                    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+                    next()
+                })
+            },
+        }
+    }
+}

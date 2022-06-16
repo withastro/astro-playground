@@ -13,23 +13,19 @@
   },
   "exports": {
     ".": "./index.js",
+    "./components": "./components/index.js",
     "./client.js": "./client.js",
+    "./routes/api.ts": "./routes/api.ts",
     "./package.json": "./package.json"
   },
-  "scripts": {
-    "dev": "astro dev",
-    "start": "astro dev",
-    "build": "astro build",
-    "preview": "astro preview"
-  },
   "dependencies": {
-    "@codesandbox/sandpack-client": "^1.1.3",
+    "@webcontainer/api": "^0.0.2",
     "emmet": "^2.3.6",
     "emmet-monaco-es": "^5.1.0",
     "monaco-editor": "^0.33.0"
   },
   "peerDependencies": {
-    "astro": "^1.0.0-beta.42"
+    "astro": "^1.0.0-beta.46"
   },
   "keywords": [
     "astro-component",

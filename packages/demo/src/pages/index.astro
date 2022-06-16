@@ -1,11 +1,12 @@
 ---
-import { Playground, File, Directory } from '@astrojs/playground';
+import { Playground, File, Directory } from '@astrojs/playground/components';
 ---
 
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width" />
+
 		<title>Astro</title>
 
 		<style is:global>
@@ -23,6 +24,7 @@ import { Playground, File, Directory } from '@astrojs/playground';
 				margin: 0 auto;
 			}
 		</style>
+
 		<script src="@astrojs/playground/client.js"></script>
 	</head>
 
@@ -31,31 +33,58 @@ import { Playground, File, Directory } from '@astrojs/playground';
 
 		<article>
 
-		<h2>Simple</h2>
+			<h2>Simple</h2>
 			<Playground>
-				<File name="Index.astro" is:raw>
+				<File name="demo.astro" is:raw>
 					---
 					const name = "world"
 					---
-					
+
 					<h1>
 						Hello {name}!
 					</h1>
 				</File>
 			</Playground>
 
-			<h2>Multiple Files</h2>
+			<h2>Client Directives</h2>
 			<Playground>
-				<File name="Index.astro" is:raw>
+				<File name="demo.astro" is:raw>
 					---
-					import Component from './Component.astro'
+					import Counter from './counter.jsx';
 					---
-					
-					<Component name="Astronaut" />
+
+					<Counter client:idle />
 				</File>
-				<File name="Component.astro" is:raw>
+				<File name="counter.jsx" is:raw>
+					import React, { useState } from 'react';
+
+					export default function Counter() {
+						const [count, setCount] = useState(0);
+
+						return (
+							<div>
+								<p>You clicked {count} times</p>
+								<button onClick={()=> setCount(count + 1)}>
+									Click me
+								</button>
+							</div>
+						);
+					}
+				</File>
+			</Playground>
+
+			<h2>Components</h2>
+			<Playground>
+				<File name="demo.astro" is:raw>
 					---
-					const { name = "world" } = Astro.props
+					import Component from './component.astro';
+					---
+
+					<Component name="Nate" />
+				</File>
+				<File name="component.astro" is:raw>
+					---
+					const { name } = Astro.props
 					---
 
 					<h1>
@@ -67,11 +96,11 @@ import { Playground, File, Directory } from '@astrojs/playground';
 			<h2>Directories</h2>
 			<Playground>
 				<Directory name="src/pages">
-					<File name="Index.astro" is:raw>
+					<File name="index.astro" is:raw>
 						---
 						import Component from '../components/Component.astro'
 						---
-						
+
 						<Component value="Amazing!" />
 					</File>
 				</Directory>
@@ -80,7 +109,7 @@ import { Playground, File, Directory } from '@astrojs/playground';
 						---
 						const { value } = Astro.props;
 						---
-						
+
 						<h1>
 							{value}
 						</h1>

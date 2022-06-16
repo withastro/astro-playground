@@ -1,9 +1,8 @@
 ---
 import { createDirectory, safe } from '../scripts/utils';
 export interface Props {
-    syncView?: boolean;
 }
-const { syncView } = Astro.props;
+const { template = 'simple' } = Astro.props;
 const content = await Astro.slots.render('default');
 const files = createDirectory('/', content);
 const data = safe(JSON.stringify(files));
@@ -12,7 +11,7 @@ const height = lines < 12 ? (lines * 22) + 12 : null;
 const id = Math.floor(Math.random() * 10000);
 ---
 
-<div class="playground" data-playground data-sync-view={syncView} style={height ? `--playground-content-height: ${height}px` : undefined}>
+<div class="playground" data-playground style={height ? `--playground-content-height: ${height}px` : undefined}>
     <header class="playground-header" data-nav>
         <ul role="tablist" class="files">
             {files.map((file, i) => (
@@ -20,16 +19,18 @@ const id = Math.floor(Math.random() * 10000);
             ))}
         </ul>
         <div class="actions">
-            <!-- <button data-action="download">Download</button> -->
-            <button data-action="reset">
-                <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="16" height="16" aria-hidden="true" role="img" class="iconify iconify--ri" preserveAspectRatio="xMidYMid meet" viewBox="0 0 24 24"><title>Refresh</title><path fill="currentColor" d="M5.463 4.433A9.961 9.961 0 0 1 12 2c5.523 0 10 4.477 10 10c0 2.136-.67 4.116-1.81 5.74L17 12h3A8 8 0 0 0 6.46 6.228l-.997-1.795zm13.074 15.134A9.961 9.961 0 0 1 12 22C6.477 22 2 17.523 2 12c0-2.136.67-4.116 1.81-5.74L7 12H4a8 8 0 0 0 13.54 5.772l.997 1.795z"></path></svg>
+            <button data-action="download">
+                <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="16" height="16" aria-hidden="true" role="img" class="iconify iconify--ri" preserveAspectRatio="xMidYMid meet" viewBox="0 0 24 24"><title>Download</title><path fill="currentColor" d="M3 19h18v2H3v-2zm10-5.828L19.071 7.1l1.414 1.414L12 17L3.515 8.515L4.929 7.1L11 13.17V2h2v11.172z"></path></svg>
+            </button>
+            <button data-action="reload">
+                <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="16" height="16" aria-hidden="true" role="img" class="iconify iconify--ri" preserveAspectRatio="xMidYMid meet" viewBox="0 0 24 24"><title>Reload</title><path fill="currentColor" d="M5.463 4.433A9.961 9.961 0 0 1 12 2c5.523 0 10 4.477 10 10c0 2.136-.67 4.116-1.81 5.74L17 12h3A8 8 0 0 0 6.46 6.228l-.997-1.795zm13.074 15.134A9.961 9.961 0 0 1 12 22C6.477 22 2 17.523 2 12c0-2.136.67-4.116 1.81-5.74L7 12H4a8 8 0 0 0 13.54 5.772l.997 1.795z"></path></svg>
             </button>
         </div>
     </header>
     <div data-editor id={`editor-${id}`} class="editor"></div>
     <div data-spacer class="spacer"></div>
     <div class="preview-container loading">
-        <iframe data-preview class="preview" allow="accelerometer; camera; encrypted-media; display-capture; geolocation; gyroscope; microphone; midi; clipboard-read; clipboard-write; web-share" sandbox="allow-forms allow-modals allow-pointer-lock allow-popups allow-same-origin allow-scripts allow-top-navigation-by-user-activation allow-downloads allow-presentation" loading="lazy"></iframe>
+        <iframe data-preview class="preview" allow="cross-origin-isolated"></iframe>
         <div class="loader">
             <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--ri" width="32" height="32" preserveAspectRatio="xMidYMid meet" viewBox="0 0 24 24"><path fill="currentColor" d="M18.364 5.636L16.95 7.05A7 7 0 1 0 19 12h2a9 9 0 1 1-2.636-6.364z"></path></svg>
         </div>
@@ -126,8 +127,6 @@ button[data-action] {
     opacity: 0.5;
     cursor: pointer;
     color: currentColor;
-}
-button[data-action="reset"] {
     margin: 0;
     padding: 0.5rem;
     --size: 2rem;
@@ -142,6 +141,8 @@ button[data-action]:is(:hover, :focus) {
 button[data-action]:active {
     opacity: 1;
     color: var(--playground-accent-color);
+}
+button[data-action="reload"]:active {
     animation: spin 400ms ease-in-out;
 }
 

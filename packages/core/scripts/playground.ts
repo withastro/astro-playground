@@ -1,25 +1,54 @@
 import "../lib/monaco";
 import { DEFAULT_STYLES } from "./utils";
-import {
-  SandpackBundlerFiles,
-  SandpackClient,
-  SandpackErrorMessage,
-  SandpackMessage,
-} from "@codesandbox/sandpack-client";
+import type { WebContainer as Runtime } from '@webcontainer/api';
+import { FileSystemTree, load as loadWebContainer } from '@webcontainer/api';
 // @ts-ignore
 import { initialize as loadAstro, transform } from "@astrojs/compiler";
 import astroWASM from "@astrojs/compiler/astro.wasm?url";
 import * as monaco from "monaco-editor";
 
-await Promise.all([loadAstro({ wasmURL: astroWASM })]);
+import pkgJSON from "../assets/package.json";
+import pkgLockJSON from "../assets/package-lock.json";
+import astroConfig from "../assets/astro.config.mjs?raw";
+import defaultStyles from "../assets/default.css?raw";
 
-export default function setup() {
+const [_, WebContainer] = await Promise.all([loadAstro({ wasmURL: astroWASM }), loadWebContainer()]);
+globalThis['@astrojs/playground/runtime'] = globalThis['@astrojs/playground/runtime'] || await WebContainer.boot()
+const runtime = globalThis['@astrojs/playground/runtime'] as Runtime;
+
+const installingAstro = new Promise<void>(async resolve => {
+  await runtime.loadFiles({
+    '~': {
+      directory: {
+        'projects': {
+          directory: {}
+        }
+      }
+    },
+    'package.json': {
+      file: {
+        contents: JSON.stringify(pkgJSON, null, 2)
+      }
+    },
+    'package-lock.json': {
+      file: {
+        contents: JSON.stringify(pkgLockJSON, null, 2)
+      }
+    }
+  })
+  runtime.run({ command: 'turbo', args: ['install']}, { stdout(data) {
+    if (data.includes('success')) resolve();
+  } })
+})
+
+export default async function setup() {
   for (const playground of document.querySelectorAll("[data-playground]")) {
     init(playground as HTMLElement);
   }
 }
 
 interface State {
+  id: string;
   elements: {
     root: HTMLElement;
     nav: HTMLElement;
@@ -30,13 +59,13 @@ interface State {
   reset: () => void;
   activePath: string;
   editor: monaco.editor.IStandaloneCodeEditor;
-  sandpack: SandpackClient;
+  runtime: Runtime;
   models: monaco.editor.ITextModel[];
 }
 
 let count = 0;
 async function init(root: HTMLElement) {
-  const id = `${count++}`;
+  const id = `project-${count++}`;
   const elements = {
     root,
     nav: root.querySelector("[data-nav]") as HTMLElement,
@@ -50,47 +79,25 @@ async function init(root: HTMLElement) {
     monaco.editor.createModel(
       file.code,
       undefined /* infer */,
-      monaco.Uri.from({ scheme: `playground-${id}`, path: file.name })
+      monaco.Uri.from({ scheme: id, path: file.name })
     )
   );
-  // Kick this off as early as possible
-  const sandpack = new SandpackClient(
-    elements.preview,
-    {
-      template: "vanilla-ts",
-      files: {
-        "/index.js": {
-          code: "/* loading... */",
-        },
-      },
-      entry: "/index.js",
-      dependencies: {
-        astro: "latest",
-      },
-    },
-    {
-      showErrorScreen: false,
-      showLoadingScreen: false,
-      showOpenInCodeSandbox: false,
-    }
-  );
-  const [editor, files] = await Promise.all([
-    setupEditor(elements.editor, models[0]),
-    Promise.all(
-      initialFiles.map((file) => {
-        if (!file.name.endsWith(".astro")) return file;
-        return transform(file.code, {
-          pathname: file.name,
-          sourcefile: file.name,
-          site: "https://localhost:3000/",
-          projectRoot: "file://",
-          sourcemap: "inline",
-        }).then(({ code }) => ({ name: `${file.name}.js`, code }))
-      })
-    )
-  ]);
-  setupSandpack(elements.preview, sandpack, files)
+
+  const editor = await setupEditor(elements.editor, models[0]);
+  const url = await setupRuntime(elements.preview, runtime, id, initialFiles);
+  elements.preview.src = `${url}`;
+  elements.preview.setAttribute('src', `${url}`);
+  if (elements.preview.parentElement.classList.contains("loading")) {
+    const loader =
+      elements.preview.parentElement.querySelector(".loader");
+    elements.preview.parentElement.classList.remove("loading");
+    setTimeout(() => {
+      loader.remove();
+    }, 500);
+  }
+  elements.preview.style.setProperty("opacity", "1");
   const state: State = {
+    id,
     reset: () => {
       initialFiles.forEach((file) => {
         const model = models.find(
@@ -98,7 +105,7 @@ async function init(root: HTMLElement) {
         ) as monaco.editor.ITextModel;
         model.setValue(file.code);
       });
-      const entry = normalizePath(initialFiles[0].name);
+      const entry = initialFiles[0].name;
       elements.nav
         .querySelector("[data-file][aria-selected]")
         .removeAttribute("aria-selected");
@@ -109,8 +116,8 @@ async function init(root: HTMLElement) {
     },
     elements,
     editor,
-    sandpack,
-    activePath: normalizePath(initialFiles[0].name),
+    runtime,
+    activePath: initialFiles[0].name,
     models,
   };
   syncState(state);
@@ -161,97 +168,84 @@ async function setupEditor(
   return editor;
 }
 
-function setupSandpack(
+let ports = new Map();
+async function setupRuntime(
   element: HTMLIFrameElement,
-  sandpack: SandpackClient,
+  runtime: Runtime,
+  id: string,
   input: { name: string; code: string }[]
-) {
-  const entry = input[0];
-  const files: SandpackBundlerFiles = {};
+): Promise<string> {
+  return new Promise(async (resolve) => {
+    let myPort: number;
+    runtime.on('server-ready', (port, url) => {
+      ports.set(port, url)
+      if (port === myPort) {
+        resolve(url);
+      }
+    })
 
-  const accentColor = window.getComputedStyle(element)["accentColor"];
-  const colorScheme = window.getComputedStyle(element)["colorScheme"];
-  const customProperties = `
-    :root {
-      --playground-accent-color: ${accentColor};
-      --playground-color-scheme: ${colorScheme};
-      accent-color: var(--playground-accent-color);
-      color-scheme: var(--playground-color-scheme);
+    const index = input.find(file => file.name === '/src/pages/index.astro');
+    if (!index) {
+      const firstComponent = input.find(file => file.name.endsWith('.astro'));
+      input.push({
+        name: '/src/pages/index.astro',
+        code: `---
+import Component from "${firstComponent.name}";
+---
+<Component />
+`
+      })
     }
-  `;
-  const styles = `${customProperties}\n${DEFAULT_STYLES}`;
 
-  files["/@virtual/entry.js"] = {
-    code: `export { default as Component } from "${entry.name}"`,
-    readOnly: true,
-  };
-
-  for (const file of input) {
-    files[file.name] = { code: file.code };
-  }
-
-  files["/@astro/render.js"] = {
-    code: `
-      import { createResult } from "astro/dist/core/render/result.js";
-      import { renderPage, renderHead } from "astro/server/index.js";
-      const result = createResult({
-          styles: new Set(),
-          links: new Set(),
-          scripts: new Set(),
-          renderers: [],
-          request: null,
-          props: {},
-          site: "http://localhost:3000",
-          request: new Request({ url: "http://localhost:3000/index" })
-      });
-
-      export default async (Component) => {
-          const { html } = await renderPage(result, Component, {}, null);
-          if (result.styles.size > 0 || result.links.size > 0 || result.scripts.size > 0) {
-            const head = await renderHead(result);
-            result.styles.clear();
-            result.links.clear();
-            result.scripts.clear();
-            return head + html;
-          }
-          return html ?? '';
-      }
-    `,
-    readOnly: true,
-  };
-
-  files["/index.js"] = {
-    code: `
-      import render from "/@astro/render.js";
-      import { Component } from "/@virtual/entry.js";
-
-      if (!document.body.dataset.styled) {
-        const style = document.createElement('style');
-        style.innerHTML = ${JSON.stringify(styles)}
-        document.head.appendChild(style);
-        document.body.dataset.styled = "true";
-      }
-
-      (async () => {
-        const html = await render(Component);
-        if (html) {
-          document.querySelector('#root').innerHTML = html;
+    const files: FileSystemTree = {};
+    for (const f of input) {
+      const fullpath = f.name.split('/').slice(1)
+      let target = files;
+      for (const part of fullpath.slice(0, -1)) {
+        if (target[part] === undefined) {
+          target[part] = { directory: {} }
         }
-      })()
-    `,
-    readOnly: true,
-  };
-
-  sandpack.updatePreview({
-    files
-  });
+        target = target[part]['directory'];
+      }
+      target[fullpath.at(-1)] = {
+        file: { 
+          contents: f.code
+        }
+      }
+    }
+    files['default.css'] = {
+      file: {
+        contents: defaultStyles
+      }
+    }
+    if (!files['astro.config.mjs']) {
+      files['astro.config.mjs'] = {
+        file: {
+          contents: astroConfig
+        }
+      }
+    }
+    await installingAstro;
+    await runtime.loadFiles({ [`${id}`]: { directory: files }}, { mountPoints: `~/projects/` })    
+    runtime.run({ command: 'turbo', args: ['--cwd', `~/projects/${id}`, 'exec', 'astro', 'dev'] }, { 
+      stdout(data) {
+        if (data.includes('localhost:')) {
+          myPort = Number.parseInt(data.split('localhost:')[1].split('/')[0]);
+        }
+        if (ports.has(myPort)) {
+          const url = ports.get(myPort);
+          resolve(url);
+        }
+      }
+    });
+  })
 }
 
 function nav(state: State) {
   const {
     models,
     editor,
-    elements: { nav: element },
+    elements: { nav: element, preview },
   } = state;
   function updatePath(e: Event) {
     const target = (e.target as HTMLElement).closest(
@@ -259,7 +253,7 @@ function nav(state: State) {
     ) as HTMLElement;
     const path = target?.dataset.file;
     if (!path) return;
-    if (path === normalizePath(state.activePath)) return;
+    if (path === state.activePath) return;
     for (const el of element.querySelectorAll("[data-file][aria-selected]")) {
       el.removeAttribute("aria-selected");
     }
@@ -275,8 +269,17 @@ function nav(state: State) {
     const action = target?.dataset.action;
     if (!action) return;
     switch (action) {
-      case "reset":
-        return state.reset();
+      case "reload": {
+        // state.reset();
+        preview.setAttribute('src', preview.getAttribute('src'));
+        return;
+      }
+      case 'download': {
+        const res = await fetch('/_api/playground', { method: 'POST', body: JSON.stringify({ files: [] }) })
+        const text = await res.text();
+        console.log({ text });
+        return;
+      }
     }
   }
   element.addEventListener("click", (e) => {
@@ -320,142 +323,19 @@ function resize({ editor, elements }: State) {
 }
 
 function syncState(state: State) {
-  const { elements, editor, sandpack } = state;
+  const { id, elements, editor, runtime } = state;
   const updateActivePath = ({ newModelUrl: { path } }) => {
     state.activePath = path;
     update();
   };
   editor.onDidChangeModel(updateActivePath);
   const update = debounce(async () => {
-    if (sandpack.status !== "idle") return;
     const text = editor.getValue();
-    const files = getFiles() ?? {};
-    const activePath = normalizePath(state.activePath);
-    if (activePath.endsWith(".astro")) {
-      const res = await transform(text, {
-        pathname: state.activePath,
-        sourcefile: state.activePath,
-        site: "https://localhost:3000/",
-        projectRoot: "file://",
-        sourcemap: "inline",
-      });
-      const id = `${activePath}.js`;
-      files[id] = { code: res.code };
-      if (elements.root.hasAttribute("data-sync-view")) {
-        files["/@virtual/entry.js"] = {
-          code: `export { default as Component } from "${id}"`,
-        };
-      }
-    } else {
-      const id = state.activePath;
-      files[id] = { code: text };
-    }
-    updateClients({ files });
+    const activePath = state.activePath;
+    const parts = activePath.split('/')
+    await runtime.loadFiles({ [parts.at(-1)]: { file: { contents: text }} }, { mountPoints: `~/projects/${id}/${parts.slice(1, -1).join('/')}` });
   }, 30);
   editor.onDidChangeModelContent(debounce(update, 300));
-  sandpack.listen((msg) => {
-    switch (msg.type) {
-      case "status": {
-        if (msg.status === "idle") {
-          if (elements.preview.parentElement.classList.contains("loading")) {
-            const loader =
-              elements.preview.parentElement.querySelector(".loader");
-            elements.preview.parentElement.classList.remove("loading");
-            setTimeout(() => {
-              loader.remove();
-            }, 500);
-          }
-          elements.preview.style.setProperty("opacity", "1");
-          clearErrors();
-        }
-        return;
-      }
-      case "action": {
-        if (msg.action === "show-error") {
-          surfaceError(msg);
-        }
-        return;
-      }
-    }
-  });
-
-  let decorations: string[] = [];
-  function surfaceError(msg: SandpackMessage & SandpackErrorMessage) {
-    if (normalizePath(msg.path) !== state.activePath) return;
-
-    const newDecorations: monaco.editor.IModelDeltaDecoration[] = [];
-    let loc: [number, number, number, number] = [0, 0, 0, 0];
-    let opts: monaco.editor.IModelDecorationOptions = {};
-    if (msg.title === "ReferenceError") {
-      const len = /^(\w+) is not/.exec(msg.message).at(1).length + 1;
-      newDecorations.push({
-        range: new monaco.Range(
-          msg.line,
-          msg.column + 1,
-          msg.line,
-          msg.column + len
-        ),
-        options: {
-          className: "error reference-error",
-        },
-      });
-      newDecorations.push({
-        range: new monaco.Range(msg.line, msg.column, msg.line, msg.column),
-        options: {
-          isWholeLine: true,
-          className: "has-error",
-          linesDecorationsClassName: "error-marker",
-        },
-      });
-    } else {
-      loc = [
-        msg.line,
-        msg.column,
-        msg.lineEnd ?? msg.line,
-        msg.columnEnd ?? msg.column + 1,
-      ];
-      opts.inlineClassName = "error reference-error";
-    }
-    newDecorations.push({
-      range: new monaco.Range(...loc),
-      options: {
-        inlineClassName: "decoration-error",
-      },
-    });
-    decorations = editor.deltaDecorations(decorations, newDecorations);
-  }
-  function clearErrors() {
-    decorations = editor.deltaDecorations(decorations, []);
-  }
-
-  function getFiles() {
-    const { status, bundlerState: state } = sandpack;
-    if (status !== "idle") {
-      return;
-    }
-    const files = {};
-    for (const id in state.transpiledModules) {
-      const file = state.transpiledModules[id].module;
-      if (!id.startsWith("/node_modules")) {
-        Object.assign(files, { [file.path]: { code: file.code } });
-      }
-    }
-    return files;
-  }
-
-  function updateClients({ files }) {
-    const { status } = sandpack;
-    if (status !== "idle") {
-      return;
-    }
-    sandpack.updatePreview({
-      files,
-    });
-  }
-}
-
-function normalizePath(path: string) {
-  return path.replace(".astro.js", ".astro");
 }
 
 function debounce(func, timeout = 300) {
