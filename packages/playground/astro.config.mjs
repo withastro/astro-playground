@@ -57,6 +57,10 @@ export default defineConfig({
 		worker: {
 			format: 'es',
 		},
+		build: {
+			// CodeMirror + the compiler island are legitimately large single chunks.
+			chunkSizeWarningLimit: 2000,
+		},
 		server: {
 			fs: {
 				// In a pnpm monorepo the hoisted WASM package lives at the workspace
