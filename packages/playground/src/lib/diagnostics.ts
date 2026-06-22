@@ -1,5 +1,5 @@
-import type { Diagnostic } from '@codemirror/lint';
-import type { DiagnosticMessage } from '@astrojs/compiler-binding';
+import type { DiagnosticMessage } from "@astrojs/compiler-binding";
+import type { Diagnostic } from "@codemirror/lint";
 
 /**
  * The compiler reports span offsets as UTF-8 **byte** offsets, but CodeMirror
@@ -12,7 +12,7 @@ export function createByteToUtf16(source: string): (byte: number) => number {
 	let byte = 0;
 	let utf16 = 0;
 	for (const char of source) {
-		const cp = char.codePointAt(0)!;
+		const cp = char.codePointAt(0) ?? 0;
 		byte += cp <= 0x7f ? 1 : cp <= 0x7ff ? 2 : cp <= 0xffff ? 3 : 4;
 		utf16 += char.length; // 2 for astral code points (surrogate pair), else 1
 		byteCheckpoints.push(byte);
@@ -34,11 +34,14 @@ export function createByteToUtf16(source: string): (byte: number) => number {
 	};
 }
 
-const SEVERITY_MAP: Record<DiagnosticMessage['severity'], Diagnostic['severity']> = {
-	error: 'error',
-	warning: 'warning',
-	information: 'info',
-	hint: 'hint',
+const SEVERITY_MAP: Record<
+	DiagnosticMessage["severity"],
+	Diagnostic["severity"]
+> = {
+	error: "error",
+	warning: "warning",
+	information: "info",
+	hint: "hint",
 };
 
 /** Convert compiler diagnostics into CodeMirror lint diagnostics. */
@@ -62,8 +65,10 @@ export function toCodeMirrorDiagnostics(
 		diagnostics.push({
 			from,
 			to,
-			severity: SEVERITY_MAP[message.severity] ?? 'error',
-			message: message.hint ? `${message.text}\n\nHint: ${message.hint}` : message.text,
+			severity: SEVERITY_MAP[message.severity] ?? "error",
+			message: message.hint
+				? `${message.text}\n\nHint: ${message.hint}`
+				: message.text,
 		});
 	}
 	return diagnostics;

@@ -14,8 +14,8 @@ import {
 	compileAstroSync,
 	extractStylesSync,
 	parseAstroSync,
-} from '@astrojs/compiler-binding-wasm32-wasi';
-import type { CompilerRequest, CompilerResponse } from './compiler-protocol';
+} from "@astrojs/compiler-binding-wasm32-wasi";
+import type { CompilerRequest, CompilerResponse } from "./compiler-protocol";
 
 const ctx = self as unknown as DedicatedWorkerGlobalScope;
 
@@ -24,34 +24,40 @@ function post(message: CompilerResponse) {
 }
 
 // Surface otherwise-invisible failures (e.g. a WASM trap) to the main thread.
-ctx.addEventListener('unhandledrejection', (event) => {
-	post({ type: 'debug', message: `unhandledrejection: ${String(event.reason)}` });
+ctx.addEventListener("unhandledrejection", (event) => {
+	post({
+		type: "debug",
+		message: `unhandledrejection: ${String(event.reason)}`,
+	});
 });
 
-post({ type: 'ready' });
+post({ type: "ready" });
 
 ctx.onmessage = (event: MessageEvent<CompilerRequest>) => {
 	const request = event.data;
 	try {
 		let result: unknown;
 		switch (request.type) {
-			case 'compile':
+			case "compile":
 				result = compileAstroSync(request.source, request.options);
 				break;
-			case 'parse': {
+			case "parse": {
 				const parsed = parseAstroSync(request.source);
 				// Parse the (potentially large) AST JSON here, off the main thread.
-				result = { ast: JSON.parse(parsed.ast), diagnostics: parsed.diagnostics };
+				result = {
+					ast: JSON.parse(parsed.ast),
+					diagnostics: parsed.diagnostics,
+				};
 				break;
 			}
-			case 'extractStyles':
+			case "extractStyles":
 				result = extractStylesSync(request.source);
 				break;
 		}
-		post({ type: 'result', id: request.id, ok: true, result });
+		post({ type: "result", id: request.id, ok: true, result });
 	} catch (error) {
 		post({
-			type: 'result',
+			type: "result",
 			id: request.id,
 			ok: false,
 			error: error instanceof Error ? error.message : String(error),

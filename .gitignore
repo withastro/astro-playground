@@ -1,5 +1,7 @@
 # build output
 dist/
+.wrangler/
+.idea/
 
 # dependencies
 node_modules/

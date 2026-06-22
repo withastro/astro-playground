@@ -1,23 +1,21 @@
 {
-  "name": "astro-playground",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "packageManager": "pnpm@10.34.3",
-  "engines": {
-    "node": "^20.19.0 || >=22.12.0"
-  },
-  "scripts": {
-    "dev": "pnpm --filter playground run dev",
-    "build": "pnpm --filter playground run build",
-    "preview": "pnpm --filter playground run preview",
-    "lang:build": "pnpm --filter @astrojs/codemirror-astro run build"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": ["esbuild", "sharp", "workerd"],
-    "supportedArchitectures": {
-      "os": ["current"],
-      "cpu": ["current", "wasm32"]
-    }
-  }
+	"name": "astro-playground",
+	"private": true,
+	"version": "0.0.0",
+	"type": "module",
+	"packageManager": "pnpm@11.5.0",
+	"engines": {
+		"node": "^20.19.0 || >=22.12.0"
+	},
+	"scripts": {
+		"dev": "pnpm --filter playground run dev",
+		"build": "pnpm --filter playground run build",
+		"preview": "pnpm --filter playground run preview",
+		"lang:build": "pnpm --filter @astrojs/codemirror-astro run build",
+		"lint:ai": "biome check --reporter=concise",
+		"lint": "biome check"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.5.0"
+	}
 }

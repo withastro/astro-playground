@@ -1,15 +1,22 @@
+<!-- biome-ignore-all lint/a11y/useValidAriaValues: aria-selected is bound to a dynamic boolean; biome can't statically evaluate Svelte expressions -->
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import type { Component, CompileResult } from '@astrojs/compiler-binding';
-	import { createOutputView, type EditorLanguage, type OutputViewHandle } from '../lib/codemirror';
+	import type { CompileResult, Component } from '@astrojs/compiler-binding';
+	import { onMount, tick, untrack } from 'svelte';
+	import {
+		createOutputView,
+		type EditorLanguage,
+		type OutputViewHandle,
+		type Theme,
+	} from '../lib/codemirror';
 	import type { ParsedAst } from '../lib/compiler-protocol';
 
 	interface Props {
 		result: CompileResult | null;
 		ast: ParsedAst | null;
+		theme: Theme;
 	}
 
-	let { result, ast }: Props = $props();
+	let { result, ast, theme }: Props = $props();
 
 	type TabId = 'js' | 'css' | 'scripts' | 'metadata' | 'diagnostics' | 'ast' | 'sourcemap';
 
@@ -29,6 +36,21 @@
 
 	const diagnosticCount = $derived(result?.diagnostics.length ?? 0);
 	const isCodeTab = $derived(CODE_TABS.has(active));
+
+	// Arrow-key navigation for the tablist (WAI-ARIA tabs pattern).
+	async function onTabKeydown(event: KeyboardEvent) {
+		const index = TABS.findIndex((tab) => tab.id === active);
+		let next = index;
+		if (event.key === 'ArrowRight') next = (index + 1) % TABS.length;
+		else if (event.key === 'ArrowLeft') next = (index - 1 + TABS.length) % TABS.length;
+		else if (event.key === 'Home') next = 0;
+		else if (event.key === 'End') next = TABS.length - 1;
+		else return;
+		event.preventDefault();
+		active = TABS[next].id;
+		await tick();
+		document.getElementById(`tab-${active}`)?.focus();
+	}
 
 	function formatComponents(components: Component[]): string {
 		if (!components || components.length === 0) return '—';
@@ -86,7 +108,13 @@
 	let view: OutputViewHandle | undefined;
 
 	onMount(() => {
-		view = createOutputView({ parent: host, doc: '', language: 'javascript' });
+		view = createOutputView({
+			parent: host,
+			doc: '',
+			language: 'javascript',
+			theme: untrack(() => theme),
+			ariaLabel: 'Compiled output (read-only)',
+		});
 		return () => view?.destroy();
 	});
 
@@ -95,18 +123,26 @@
 		const code = codeFor(active);
 		view.setContent(code.text, code.language);
 	});
+
+	$effect(() => {
+		view?.setTheme(theme);
+	});
 </script>
 
 <div class="outputs">
-	<div class="tablist" role="tablist">
+	<div class="tablist" role="tablist" aria-label="Compiler output">
 		{#each TABS as tab (tab.id)}
 			<button
 				type="button"
 				role="tab"
+				id={`tab-${tab.id}`}
 				class="tab"
 				class:active={active === tab.id}
 				aria-selected={active === tab.id}
+				aria-controls="output-panel"
+				tabindex={active === tab.id ? 0 : -1}
 				onclick={() => (active = tab.id)}
+				onkeydown={onTabKeydown}
 			>
 				{tab.label}
 				{#if tab.id === 'diagnostics' && diagnosticCount > 0}
@@ -116,7 +152,8 @@
 		{/each}
 	</div>
 
-	<div class="panel">
+	<!-- biome-ignore lint/a11y/noNoninteractiveTabindex: false-positive. A tabpanel must have a tab index -->
+	<div class="panel" id="output-panel" role="tabpanel" aria-labelledby={`tab-${active}`} tabindex="0">
 		<div class="code-host" bind:this={host} hidden={!isCodeTab}></div>
 
 		{#if active === 'metadata'}
@@ -221,7 +258,7 @@
 		position: relative;
 		flex: 1;
 		min-height: 0;
-		overflow: hidden;
+		overflow: auto;
 	}
 	.code-host {
 		position: absolute;
@@ -230,17 +267,14 @@
 	.code-host[hidden] {
 		display: none;
 	}
-	.code-host :global(.cm-editor) {
+	:global(.code-host .cm-editor) {
 		height: 100%;
 	}
-	.code-host :global(.cm-scroller) {
+	:global(.code-host .cm-scroller) {
 		font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 		font-size: 13px;
 	}
 	.structured {
-		position: absolute;
-		inset: 0;
-		overflow: auto;
 		padding: 1rem;
 		font-size: 0.85rem;
 	}

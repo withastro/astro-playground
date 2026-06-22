@@ -13,7 +13,7 @@ import type {
 	CompilerResponse,
 	ParsedAst,
 	StyleBlock,
-} from './compiler-protocol';
+} from "./compiler-protocol";
 
 interface Pending {
 	resolve: (value: unknown) => void;
@@ -60,24 +60,31 @@ export class CompilerClient {
 
 	#spawn(): Worker {
 		this.#workerReady = false;
-		const worker = new Worker(new URL('./compiler.worker.ts', import.meta.url), {
-			type: 'module',
-			name: 'astro-compiler',
-		});
-		worker.onmessage = (event: MessageEvent<CompilerResponse>) => this.#onMessage(event.data);
-		worker.onerror = () => this.#crash(new Error('The Astro compiler worker crashed.'));
+		const worker = new Worker(
+			new URL("./compiler.worker.ts", import.meta.url),
+			{
+				type: "module",
+				name: "astro-compiler",
+			},
+		);
+		worker.onmessage = (event: MessageEvent<CompilerResponse>) =>
+			this.#onMessage(event.data);
+		worker.onerror = () =>
+			this.#crash(new Error("The Astro compiler worker crashed."));
 		worker.onmessageerror = () =>
-			this.#crash(new Error('The Astro compiler worker sent an invalid message.'));
+			this.#crash(
+				new Error("The Astro compiler worker sent an invalid message."),
+			);
 		this.#worker = worker;
 		return worker;
 	}
 
 	#onMessage(message: CompilerResponse) {
-		if (message.type === 'debug') {
-			console.debug('[compiler.worker]', message.message);
+		if (message.type === "debug") {
+			console.debug("[compiler.worker]", message.message);
 			return;
 		}
-		if (message.type === 'ready') {
+		if (message.type === "ready") {
 			this.#workerReady = true;
 			this.#setReady(true);
 			// Flush any requests queued while the worker was instantiating WASM.
@@ -112,36 +119,42 @@ export class CompilerClient {
 		this.#pending.clear();
 	}
 
-	#call<T>(request: Omit<CompilerRequest, 'id'>): Promise<T> {
+	#call<T>(request: Omit<CompilerRequest, "id">): Promise<T> {
 		const worker = this.#worker ?? this.#spawn();
 		const id = ++this.#seq;
 		const message = { ...request, id } as CompilerRequest;
 		return new Promise<T>((resolve, reject) => {
 			const timer = setTimeout(() => {
 				this.#pending.delete(id);
-				this.#crash(new Error(`Compilation timed out after ${this.#timeoutMs}ms.`));
+				this.#crash(
+					new Error(`Compilation timed out after ${this.#timeoutMs}ms.`),
+				);
 				reject(new Error(`Compilation timed out after ${this.#timeoutMs}ms.`));
 			}, this.#timeoutMs);
-			this.#pending.set(id, { resolve: resolve as (v: unknown) => void, reject, timer });
+			this.#pending.set(id, {
+				resolve: resolve as (v: unknown) => void,
+				reject,
+				timer,
+			});
 			if (this.#workerReady) worker.postMessage(message);
 			else this.#outbox.push(message);
 		});
 	}
 
 	compile(source: string, options?: CompileOptions): Promise<CompileResult> {
-		return this.#call<CompileResult>({ type: 'compile', source, options });
+		return this.#call<CompileResult>({ type: "compile", source, options });
 	}
 
 	parse(source: string): Promise<ParsedAst> {
-		return this.#call<ParsedAst>({ type: 'parse', source });
+		return this.#call<ParsedAst>({ type: "parse", source });
 	}
 
 	extractStyles(source: string): Promise<StyleBlock[]> {
-		return this.#call<StyleBlock[]>({ type: 'extractStyles', source });
+		return this.#call<StyleBlock[]>({ type: "extractStyles", source });
 	}
 
 	dispose(): void {
-		this.#crash(new Error('Compiler client disposed.'));
+		this.#crash(new Error("Compiler client disposed."));
 		this.#readyListeners.clear();
 	}
 }

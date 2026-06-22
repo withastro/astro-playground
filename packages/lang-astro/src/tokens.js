@@ -6,8 +6,8 @@
 //   - `<!-- ... -->` comments
 //   - the raw text inside `<script>` / `<style>` (so their JS/CSS bodies are
 //     not mis-parsed as markup), stopping before the matching close tag
-import { ExternalTokenizer } from '@lezer/lr';
-import { Comment, Expression, Frontmatter, RawText } from './parser.terms.js';
+import { ExternalTokenizer } from "@lezer/lr";
+import { Comment, Expression, Frontmatter, RawText } from "./parser.terms.js";
 
 const DASH = 45;
 const NEWLINE = 10;
@@ -39,7 +39,8 @@ function matchesWord(input, offset, word) {
 // `---` … `---`, only at the very start of the document.
 export const frontmatterToken = new ExternalTokenizer((input) => {
 	if (input.pos !== 0) return;
-	if (input.next !== DASH || input.peek(1) !== DASH || input.peek(2) !== DASH) return;
+	if (input.next !== DASH || input.peek(1) !== DASH || input.peek(2) !== DASH)
+		return;
 	input.advance(3);
 	for (;;) {
 		if (input.next < 0) {
@@ -62,7 +63,12 @@ export const frontmatterToken = new ExternalTokenizer((input) => {
 
 // `<!-- … -->`
 export const commentToken = new ExternalTokenizer((input) => {
-	if (input.next !== LT || input.peek(1) !== BANG || input.peek(2) !== DASH || input.peek(3) !== DASH) {
+	if (
+		input.next !== LT ||
+		input.peek(1) !== BANG ||
+		input.peek(2) !== DASH ||
+		input.peek(3) !== DASH
+	) {
 		return;
 	}
 	input.advance(4);
@@ -111,7 +117,11 @@ export const expressionToken = new ExternalTokenizer((input) => {
 		}
 		if (ch === SLASH && input.peek(1) === STAR) {
 			input.advance(2);
-			while (input.next >= 0 && !(input.next === STAR && input.peek(1) === SLASH)) input.advance();
+			while (
+				input.next >= 0 &&
+				!(input.next === STAR && input.peek(1) === SLASH)
+			)
+				input.advance();
 			if (input.next >= 0) input.advance(2);
 			continue;
 		}
@@ -145,7 +155,7 @@ export const rawTextToken = new ExternalTokenizer((input) => {
 		if (
 			input.next === LT &&
 			input.peek(1) === SLASH &&
-			(matchesWord(input, 2, 'script') || matchesWord(input, 2, 'style'))
+			(matchesWord(input, 2, "script") || matchesWord(input, 2, "style"))
 		) {
 			if (length > 0) input.acceptToken(RawText);
 			return;

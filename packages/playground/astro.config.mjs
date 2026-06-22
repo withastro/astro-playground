@@ -1,7 +1,7 @@
-import { defineConfig } from 'astro/config';
-import svelte from '@astrojs/svelte';
-import cloudflare from '@astrojs/cloudflare';
-import { searchForWorkspaceRoot } from 'vite';
+import cloudflare from "@astrojs/cloudflare";
+import svelte from "@astrojs/svelte";
+import { defineConfig } from "astro/config";
+import { searchForWorkspaceRoot } from "vite";
 
 /**
  * The Rust compiler's WASM build (`wasm32-wasip1-threads`) instantiates a
@@ -10,8 +10,8 @@ import { searchForWorkspaceRoot } from 'vite';
  * prerendered HTML via `public/_headers`.
  */
 const COI_HEADERS = {
-	'Cross-Origin-Opener-Policy': 'same-origin',
-	'Cross-Origin-Embedder-Policy': 'credentialless',
+	"Cross-Origin-Opener-Policy": "same-origin",
+	"Cross-Origin-Embedder-Policy": "credentialless",
 };
 
 /**
@@ -23,7 +23,7 @@ const COI_HEADERS = {
 function crossOriginIsolation() {
 	const apply = (server) => {
 		server.middlewares.stack.unshift({
-			route: '',
+			route: "",
 			handle: (_req, res, next) => {
 				for (const [key, value] of Object.entries(COI_HEADERS)) {
 					res.setHeader(key, value);
@@ -33,7 +33,7 @@ function crossOriginIsolation() {
 		});
 	};
 	return {
-		name: 'playground:cross-origin-isolation',
+		name: "playground:cross-origin-isolation",
 		configureServer: apply,
 		configurePreviewServer: apply,
 	};
@@ -52,10 +52,10 @@ export default defineConfig({
 		// `new URL('./x.wasm', import.meta.url)` and `new Worker(new URL(...))`.
 		// Pre-bundling rewrites those URLs and breaks them, so exclude it.
 		optimizeDeps: {
-			exclude: ['@astrojs/compiler-binding-wasm32-wasi'],
+			exclude: ["@astrojs/compiler-binding-wasm32-wasi"],
 		},
 		worker: {
-			format: 'es',
+			format: "es",
 		},
 		build: {
 			// CodeMirror + the compiler island are legitimately large single chunks.

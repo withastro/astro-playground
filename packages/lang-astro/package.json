@@ -12,7 +12,10 @@
 			"import": "./src/index.ts"
 		}
 	},
-	"files": ["dist", "src"],
+	"files": [
+		"dist",
+		"src"
+	],
 	"scripts": {
 		"build:grammar": "node scripts/build-grammar.mjs",
 		"build": "node scripts/build-grammar.mjs && tsup",

@@ -8,6 +8,13 @@ astro dev --background
 
 Manage the background server with `astro dev stop`, `astro dev status`, and `astro dev logs`.
 
+Linting and formatting via biome.
+
+Check
+```
+pnpm lint:ai
+```
+
 ## Documentation
 
 Full documentation: https://docs.astro.build

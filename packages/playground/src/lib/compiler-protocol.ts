@@ -5,7 +5,7 @@ import type {
 	CompileResult,
 	DiagnosticMessage,
 	StyleBlock,
-} from '@astrojs/compiler-binding';
+} from "@astrojs/compiler-binding";
 
 /** Result of `parse`, with the AST JSON already parsed off the main thread. */
 export interface ParsedAst {
@@ -14,14 +14,14 @@ export interface ParsedAst {
 }
 
 export type CompilerRequest =
-	| { type: 'compile'; id: number; source: string; options?: CompileOptions }
-	| { type: 'parse'; id: number; source: string }
-	| { type: 'extractStyles'; id: number; source: string };
+	| { type: "compile"; id: number; source: string; options?: CompileOptions }
+	| { type: "parse"; id: number; source: string }
+	| { type: "extractStyles"; id: number; source: string };
 
 export type CompilerResponse =
-	| { type: 'ready' }
-	| { type: 'debug'; message: string }
-	| { type: 'result'; id: number; ok: true; result: unknown }
-	| { type: 'result'; id: number; ok: false; error: string };
+	| { type: "ready" }
+	| { type: "debug"; message: string }
+	| { type: "result"; id: number; ok: true; result: unknown }
+	| { type: "result"; id: number; ok: false; error: string };
 
 export type { CompileOptions, CompileResult, DiagnosticMessage, StyleBlock };

@@ -1,21 +1,30 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import type { Diagnostic } from '@codemirror/lint';
-	import { createInputEditor, type InputEditorHandle } from '../lib/codemirror';
+	import { onMount, untrack } from 'svelte';
+	import { createInputEditor, type InputEditorHandle, type Theme } from '../lib/codemirror';
 
 	interface Props {
 		value: string;
 		diagnostics?: readonly Diagnostic[];
+		theme: Theme;
 		onChange: (value: string) => void;
 	}
 
-	let { value, diagnostics = [], onChange }: Props = $props();
+	let { value, diagnostics = [], theme, onChange }: Props = $props();
 
 	let host: HTMLDivElement;
 	let handle: InputEditorHandle | undefined;
 
 	onMount(() => {
-		handle = createInputEditor({ parent: host, doc: value, language: 'astro', onChange });
+		// Initial values only; the `$effect`s below keep them in sync afterwards.
+		handle = createInputEditor({
+			parent: host,
+			doc: untrack(() => value),
+			language: 'astro',
+			theme: untrack(() => theme),
+			ariaLabel: 'Astro source editor',
+			onChange,
+		});
 		return () => handle?.destroy();
 	});
 
@@ -28,6 +37,11 @@
 	$effect(() => {
 		handle?.setDiagnostics(diagnostics);
 	});
+
+	// React to theme changes.
+	$effect(() => {
+		handle?.setTheme(theme);
+	});
 </script>
 
 <div class="editor-host" bind:this={host}></div>
@@ -38,10 +52,11 @@
 		inset: 0;
 		overflow: hidden;
 	}
-	.editor-host :global(.cm-editor) {
+	/* CodeMirror injects these at runtime, so they must be global. */
+	:global(.editor-host .cm-editor) {
 		height: 100%;
 	}
-	.editor-host :global(.cm-scroller) {
+	:global(.editor-host .cm-scroller) {
 		font-family:
 			ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
 		font-size: 13px;

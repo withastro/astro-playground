@@ -1,26 +1,39 @@
 <script lang="ts">
-	import { onDestroy } from 'svelte';
 	import type { CompileResult } from '@astrojs/compiler-binding';
+	import { onDestroy } from 'svelte';
 	import { compiler } from '../lib/compiler';
 	import type { ParsedAst } from '../lib/compiler-protocol';
 	import { toCodeMirrorDiagnostics } from '../lib/diagnostics';
 	import { DEFAULT_COMPILE_OPTIONS } from '../lib/options';
 	import { DEFAULT_SOURCE } from '../lib/samples';
+	import { readSharedState, shareUrl, writeSharedState } from '../lib/share';
+	import { applyTheme, initialTheme, type Theme } from '../lib/theme';
 	import Editor from './Editor.svelte';
 	import OutputTabs from './OutputTabs.svelte';
+	import Toolbar from './Toolbar.svelte';
 
-	let source = $state(DEFAULT_SOURCE);
-	const options = { ...DEFAULT_COMPILE_OPTIONS };
+	const shared = readSharedState();
+	let source = $state(shared?.code ?? DEFAULT_SOURCE);
+	let options = $state({ ...DEFAULT_COMPILE_OPTIONS, ...(shared?.options ?? {}) });
+
+	let theme = $state<Theme>(initialTheme());
+	applyTheme(theme);
 
 	let result = $state<CompileResult | null>(null);
 	let ast = $state<ParsedAst | null>(null);
 	let status = $state<'loading' | 'compiling' | 'ready' | 'error'>('loading');
 	let errorMessage = $state('');
 	let compileMs = $state(0);
+	let shareLabel = $state('Share');
 
 	const diagnostics = $derived(
 		result ? toCodeMirrorDiagnostics(source, result.diagnostics) : [],
 	);
+
+	// Reflect the current source + options in the URL hash, reactively.
+	$effect(() => {
+		writeSharedState(source, $state.snapshot(options));
+	});
 
 	let runId = 0;
 	let debounceTimer: ReturnType<typeof setTimeout> | undefined;
@@ -31,10 +44,10 @@
 		if (result) status = 'compiling';
 		try {
 			const [compiled, parsed] = await Promise.all([
-				compiler.compile(source, options),
+				compiler.compile(source, $state.snapshot(options)),
 				compiler.parse(source),
 			]);
-			if (current !== runId) return; // a newer run superseded this one
+			if (current !== runId) return;
 			result = compiled;
 			ast = parsed;
 			compileMs = Math.round(performance.now() - start);
@@ -57,7 +70,21 @@
 		scheduleCompile();
 	}
 
-	// Kick off the first compilation (spawns the worker + loads WASM).
+	function toggleTheme() {
+		theme = theme === 'dark' ? 'light' : 'dark';
+		applyTheme(theme);
+	}
+
+	async function share() {
+		try {
+			await navigator.clipboard.writeText(shareUrl(source, $state.snapshot(options)));
+			shareLabel = 'Copied!';
+		} catch {
+			shareLabel = 'Copy failed';
+		}
+		setTimeout(() => (shareLabel = 'Share'), 1500);
+	}
+
 	runCompile();
 
 	onDestroy(() => {
@@ -67,15 +94,35 @@
 </script>
 
 <div class="app">
+	<Toolbar
+		{options}
+		{theme}
+		{shareLabel}
+		onChange={scheduleCompile}
+		onToggleTheme={toggleTheme}
+		onShare={share}
+	/>
+
 	{#if status === 'error'}
-		<div class="error-banner">{errorMessage}</div>
+		<div class="error-banner" role="alert">{errorMessage}</div>
 	{/if}
 
 	<div class="split">
 		<section class="pane">
 			<div class="pane-head">
-				<span class="filename">{options.filename}</span>
-				<span class="status" data-status={status}>
+				<input
+					class="filename"
+					id="filename"
+					name="filename"
+					aria-label="Component filename"
+					value={options.filename}
+					spellcheck="false"
+					oninput={(e) => {
+						options.filename = e.currentTarget.value;
+						scheduleCompile();
+					}}
+				/>
+				<span class="status" data-status={status} role="status" aria-live="polite">
 					{#if status === 'loading'}
 						Starting compiler…
 					{:else if status === 'compiling'}
@@ -88,11 +135,11 @@
 				</span>
 			</div>
 			<div class="pane-body">
-				<Editor value={source} {diagnostics} onChange={handleSourceChange} />
+				<Editor value={source} {diagnostics} {theme} onChange={handleSourceChange} />
 			</div>
 		</section>
 		<section class="pane">
-			<OutputTabs {result} {ast} />
+			<OutputTabs {result} {ast} {theme} />
 		</section>
 	</div>
 </div>
@@ -143,7 +190,25 @@
 		background: var(--panel);
 	}
 	.filename {
+		appearance: none;
+		background: transparent;
+		border: 1px solid transparent;
+		border-radius: 6px;
+		color: var(--fg);
 		font-family: ui-monospace, monospace;
+		font-size: 0.78rem;
+		padding: 0.2rem 0.4rem;
+		min-width: 0;
+	}
+	.filename:hover {
+		border-color: var(--border);
+	}
+	.filename:focus {
+		outline: none;
+		border-color: var(--accent);
+	}
+	.status {
+		flex: none;
 	}
 	.status[data-status='error'] {
 		color: #f87171;
