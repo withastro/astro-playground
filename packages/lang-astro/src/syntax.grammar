@@ -26,6 +26,7 @@ RawElement { RawOpenTag RawText? RawCloseTag }
 }
 
 TagName { identifier }
+AttributeName { identifier }
 RawTagName { @specialize<identifier, "script"> | @specialize<identifier, "style"> }
 
 @tokens {
