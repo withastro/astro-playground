@@ -1,0 +1,48 @@
+@top Document { Frontmatter? content }
+
+@external tokens frontmatterToken from "./tokens.js" { Frontmatter }
+@external tokens commentToken from "./tokens.js" { Comment }
+@external tokens expressionToken from "./tokens.js" { Expression }
+@external tokens rawTextToken from "./tokens.js" { RawText }
+
+content { (Comment | Element | Expression | Text)* }
+
+Element {
+  OpenTag content CloseTag |
+  SelfClosingTag |
+  RawElement
+}
+
+RawElement { RawOpenTag RawText? RawCloseTag }
+
+@skip { space } {
+  OpenTag { "<" TagName Attribute* ">" }
+  SelfClosingTag { "<" TagName Attribute* "/>" }
+  CloseTag { "</" TagName ">" }
+  RawOpenTag { "<" RawTagName Attribute* ">" }
+  RawCloseTag { "</" RawTagName ">" }
+  Attribute { AttributeName ("=" AttributeValue)? | Expression }
+  AttributeValue { AttributeString | UnquotedValue | Expression }
+}
+
+TagName { identifier }
+RawTagName { @specialize<identifier, "script"> | @specialize<identifier, "style"> }
+
+@tokens {
+  space { $[ \t\r\n]+ }
+
+  identifier { $[a-zA-Z_$@:] $[-a-zA-Z0-9._:]* }
+
+  AttributeString {
+    '"' !["]* '"' |
+    "'" ![']* "'"
+  }
+
+  UnquotedValue { ![ \t\r\n"'`=<>{}]+ }
+
+  Text { ![<{]+ }
+
+  "<" "</" ">" "/>" "="
+}
+
+@detectDelim
