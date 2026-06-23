@@ -1,3 +1,4 @@
+<!-- biome-ignore-all lint/a11y/useValidAriaValues: bug in biome -->
 <script lang="ts">
 	import type { CompileResult } from '@astrojs/compiler-binding';
 	import { onDestroy } from 'svelte';
@@ -85,6 +86,43 @@
 		setTimeout(() => (shareLabel = 'Share'), 1500);
 	}
 
+	// --- Resizable split between the editor and output panes ---
+	const MIN_PCT = 15;
+	const MAX_PCT = 85;
+	let splitEl: HTMLDivElement;
+	let leftPct = $state(50);
+	let dragging = $state(false);
+
+	function clampPct(value: number): number {
+		return Math.min(MAX_PCT, Math.max(MIN_PCT, value));
+	}
+
+	function onGutterPointerDown(event: PointerEvent) {
+		dragging = true;
+		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+	}
+
+	function onGutterPointerMove(event: PointerEvent) {
+		if (!dragging || !splitEl) return;
+		const rect = splitEl.getBoundingClientRect();
+		leftPct = clampPct(((event.clientX - rect.left) / rect.width) * 100);
+	}
+
+	function onGutterPointerUp(event: PointerEvent) {
+		dragging = false;
+		(event.currentTarget as HTMLElement).releasePointerCapture?.(event.pointerId);
+	}
+
+	function onGutterKeydown(event: KeyboardEvent) {
+		const step = event.shiftKey ? 10 : 2;
+		if (event.key === 'ArrowLeft') leftPct = clampPct(leftPct - step);
+		else if (event.key === 'ArrowRight') leftPct = clampPct(leftPct + step);
+		else if (event.key === 'Home') leftPct = MIN_PCT;
+		else if (event.key === 'End') leftPct = MAX_PCT;
+		else return;
+		event.preventDefault();
+	}
+
 	runCompile();
 
 	onDestroy(() => {
@@ -107,7 +145,7 @@
 		<div class="error-banner" role="alert">{errorMessage}</div>
 	{/if}
 
-	<div class="split">
+	<div class="split" class:dragging bind:this={splitEl} style="--left: {leftPct}%">
 		<section class="pane">
 			<div class="pane-head">
 				<label class="visually-hidden" for="filename">Component filename</label>
@@ -138,6 +176,21 @@
 				<Editor value={source} {diagnostics} {theme} onChange={handleSourceChange} />
 			</div>
 		</section>
+		<!-- biome-ignore lint/a11y/useSemanticElements: a focusable, draggable window-splitter has no semantic HTML equivalent -->
+		<div
+			class="gutter"
+			role="separator"
+			aria-orientation="vertical"
+			aria-label="Resize editor and output panes"
+			aria-valuenow={Math.round(leftPct)}
+			aria-valuemin={MIN_PCT}
+			aria-valuemax={MAX_PCT}
+			tabindex="0"
+			onpointerdown={onGutterPointerDown}
+			onpointermove={onGutterPointerMove}
+			onpointerup={onGutterPointerUp}
+			onkeydown={onGutterKeydown}
+		></div>
 		<section class="pane">
 			<OutputTabs {result} {ast} {theme} />
 		</section>
@@ -165,7 +218,11 @@
 		flex: 1;
 		min-height: 0;
 		display: grid;
-		grid-template-columns: 1fr 1fr;
+		grid-template-columns: var(--left, 50%) 6px 1fr;
+	}
+	.split.dragging {
+		cursor: col-resize;
+		user-select: none;
 	}
 	.pane {
 		display: flex;
@@ -173,8 +230,26 @@
 		min-width: 0;
 		min-height: 0;
 	}
-	.pane:first-child {
-		border-right: 1px solid var(--border);
+	.gutter {
+		cursor: col-resize;
+		background: var(--border);
+		border: none;
+		padding: 0;
+		position: relative;
+	}
+	/* Wider invisible hit area so the 6px gutter is easy to grab. */
+	.gutter::before {
+		content: '';
+		position: absolute;
+		inset: 0 -4px;
+	}
+	.gutter:hover,
+	.gutter:focus-visible {
+		background: var(--accent);
+		outline: none;
+	}
+	.split.dragging .pane {
+		pointer-events: none;
 	}
 	.pane-head {
 		display: flex;
@@ -226,8 +301,10 @@
 			grid-template-columns: 1fr;
 			grid-template-rows: 1fr 1fr;
 		}
+		.gutter {
+			display: none;
+		}
 		.pane:first-child {
-			border-right: none;
 			border-bottom: 1px solid var(--border);
 		}
 	}
