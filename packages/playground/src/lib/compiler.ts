@@ -10,6 +10,7 @@ import type {
 	CompileOptions,
 	CompileResult,
 	CompilerRequest,
+	CompilerRequestPayload,
 	CompilerResponse,
 	ParsedAst,
 	StyleBlock,
@@ -119,7 +120,7 @@ export class CompilerClient {
 		this.#pending.clear();
 	}
 
-	#call<T>(request: Omit<CompilerRequest, "id">): Promise<T> {
+	#call<T>(request: CompilerRequestPayload): Promise<T> {
 		const worker = this.#worker ?? this.#spawn();
 		const id = ++this.#seq;
 		const message = { ...request, id } as CompilerRequest;

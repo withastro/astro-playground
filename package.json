@@ -13,7 +13,8 @@
 		"preview": "pnpm --filter playground run preview",
 		"lang:build": "pnpm --filter @astrojs/codemirror-astro run build",
 		"lint:ai": "biome check --reporter=concise",
-		"lint": "biome check"
+		"lint": "biome check",
+		"lint:fix": "biome check --write"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.5.1"

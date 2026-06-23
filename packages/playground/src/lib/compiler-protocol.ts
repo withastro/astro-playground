@@ -18,6 +18,12 @@ export type CompilerRequest =
 	| { type: "parse"; id: number; source: string }
 	| { type: "extractStyles"; id: number; source: string };
 
+export type CompilerRequestPayload = CompilerRequest extends infer Request
+	? Request extends { id: number }
+		? Omit<Request, "id">
+		: never
+	: never;
+
 export type CompilerResponse =
 	| { type: "ready" }
 	| { type: "debug"; message: string }

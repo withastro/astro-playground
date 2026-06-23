@@ -19,7 +19,8 @@
 	"scripts": {
 		"build:grammar": "node scripts/build-grammar.mjs",
 		"build": "node scripts/build-grammar.mjs && tsdown",
-		"dev": "tsdown --watch"
+		"dev": "tsdown --watch",
+		"check": "tsc --noEmit"
 	},
 	"dependencies": {
 		"@lezer/highlight": "^1.2.3",
