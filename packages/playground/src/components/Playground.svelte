@@ -18,7 +18,10 @@
 	let options = $state({ ...DEFAULT_COMPILE_OPTIONS, ...(shared?.options ?? {}) });
 
 	let theme = $state<Theme>(initialTheme());
-	applyTheme(theme);
+	// Ensure theme application reacts to changes (avoids stale capture warning)
+	$effect(() => {
+		applyTheme(theme);
+	});
 
 	let result = $state<CompileResult | null>(null);
 	let ast = $state<ParsedAst | null>(null);
