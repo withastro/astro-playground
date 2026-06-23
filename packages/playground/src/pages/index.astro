@@ -1,7 +1,8 @@
 ---
 export const prerender = true;
 
-import Logo from '../assets/astro-icon-light-gradient.svg';
+import LogoOnLight from '../assets/astro-icon-dark.svg';
+import LogoOnDark from '../assets/astro-icon-light-gradient.svg';
 import Playground from '../components/Playground.svelte';
 ---
 
@@ -31,7 +32,8 @@ import Playground from '../components/Playground.svelte';
 		<div class="shell">
 			<header class="site-header">
 				<a class="brand" href="https://astro.build" target="_blank" rel="noreferrer">
-					<Logo class="logo" aria-hidden="true" focusable="false" />
+					<LogoOnDark class="logo logo-on-dark" aria-hidden="true" focusable="false" />
+					<LogoOnLight class="logo logo-on-light" aria-hidden="true" focusable="false" />
 					<span>Astro Playground</span>
 				</a>
 				<nav class="site-nav">
@@ -60,15 +62,21 @@ import Playground from '../components/Playground.svelte';
 		--muted: #8b949e;
 		--border: #30363d;
 		--accent: #f041ff;
+		--on-accent: #1b0a26;
+		--ok: #4ade80;
+		--err: #f87171;
 	}
 	:root[data-theme='light'] {
 		color-scheme: light;
 		--bg: #ffffff;
 		--panel: #f6f8fa;
-		--fg: #1f2328;
+		--fg: #0d1117;
 		--muted: #656d76;
 		--border: #d0d7de;
 		--accent: #f041ff;
+		--on-accent: #1b0a26;
+		--ok: #15803d;
+		--err: #b91c1c;
 	}
 	* {
 		box-sizing: border-box;
@@ -107,6 +115,16 @@ import Playground from '../components/Playground.svelte';
 	.brand .logo {
 		height: 24px;
 		width: auto;
+		display: block;
+	}
+	/* Show the gradient mark on dark themes, the dark mark on light themes. */
+	.brand .logo-on-light {
+		display: none;
+	}
+	:root[data-theme='light'] .brand .logo-on-dark {
+		display: none;
+	}
+	:root[data-theme='light'] .brand .logo-on-light {
 		display: block;
 	}
 	.site-nav a {

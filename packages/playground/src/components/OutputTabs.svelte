@@ -249,7 +249,7 @@
 	.badge {
 		font-size: 0.7rem;
 		background: var(--accent);
-		color: white;
+		color: var(--on-accent);
 		border-radius: 999px;
 		padding: 0 0.4rem;
 		line-height: 1.4;

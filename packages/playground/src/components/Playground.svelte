@@ -110,11 +110,11 @@
 	<div class="split">
 		<section class="pane">
 			<div class="pane-head">
+				<label class="visually-hidden" for="filename">Component filename</label>
 				<input
 					class="filename"
 					id="filename"
 					name="filename"
-					aria-label="Component filename"
 					value={options.filename}
 					spellcheck="false"
 					oninput={(e) => {
@@ -155,7 +155,7 @@
 	.error-banner {
 		padding: 0.6rem 1rem;
 		background: rgba(248, 113, 113, 0.12);
-		color: #f87171;
+		color: var(--err);
 		font-size: 0.85rem;
 		font-family: ui-monospace, monospace;
 		border-bottom: 1px solid rgba(248, 113, 113, 0.3);
@@ -211,10 +211,10 @@
 		flex: none;
 	}
 	.status[data-status='error'] {
-		color: #f87171;
+		color: var(--err);
 	}
 	.status[data-status='ready'] {
-		color: #4ade80;
+		color: var(--ok);
 	}
 	.pane-body {
 		position: relative;

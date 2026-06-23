@@ -148,7 +148,7 @@
 	}
 	.share {
 		background: var(--accent);
-		color: #fff;
+		color: var(--on-accent);
 		border-color: transparent;
 		font-weight: 600;
 	}

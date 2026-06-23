@@ -48,9 +48,19 @@ import {
 export type EditorLanguage = "astro" | "javascript" | "css" | "json" | "text";
 export type Theme = "light" | "dark";
 
+// Light mode keeps CodeMirror's default highlight colors; only the base
+// (non-token) text is darkened to near-black.
+const lightTheme = EditorView.theme(
+	{
+		"&": { color: "#0d1117" },
+		".cm-content": { color: "#0d1117" },
+	},
+	{ dark: false },
+);
+
 function themeExtension(theme: Theme): Extension {
 	// Light mode relies on `defaultHighlightStyle` (a fallback in `baseExtensions`).
-	return theme === "dark" ? oneDark : [];
+	return theme === "dark" ? oneDark : [lightTheme];
 }
 
 function languageExtension(language: EditorLanguage): Extension {
@@ -136,6 +146,10 @@ export function createInputEditor(options: {
 		}),
 	});
 
+	// Make the scroll container keyboard-focusable so the scrollable region is
+	// reachable without a pointer (and satisfies axe's scrollable-region rule).
+	view.scrollDOM.tabIndex = 0;
+
 	return {
 		view,
 		setDoc(text) {
@@ -190,6 +204,8 @@ export function createOutputView(options: {
 			],
 		}),
 	});
+
+	view.scrollDOM.tabIndex = 0;
 
 	return {
 		view,
