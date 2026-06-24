@@ -12,3 +12,7 @@ Once you checked out the project, run `pnpm i` from the root of the repository, 
 of the playground.
 
 Use `pnpm check` before sending a PR.
+
+## Miscellaneous 
+
+- Once a PR is merged, the changes are deployed in production
