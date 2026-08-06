@@ -5,12 +5,13 @@
 	"type": "module",
 	"packageManager": "pnpm@11.5.0",
 	"engines": {
-		"node": "22.16.0"
+		"node": "24.12.0"
 	},
 	"scripts": {
 		"dev": "pnpm --filter playground run dev",
 		"build": "pnpm --filter playground run build",
 		"preview": "pnpm --filter playground run preview",
+		"test": "pnpm --filter playground run test",
 		"lang:build": "pnpm --filter @astrojs/codemirror-astro run build",
 		"lint:ai": "biome check --reporter=concise",
 		"lint": "biome check",
@@ -18,6 +19,6 @@
 		"check": "pnpm --filter ./packages/playground --filter ./packages/lang-astro run check"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "2.5.1"
+		"@biomejs/biome": "2.5.7"
 	}
 }

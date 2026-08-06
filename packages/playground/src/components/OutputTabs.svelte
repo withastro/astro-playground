@@ -14,13 +14,34 @@
 		result: CompileResult | null;
 		ast: ParsedAst | null;
 		theme: Theme;
+		previewStatus: 'idle' | 'rendering' | 'ready' | 'error' | 'unsupported';
+		previewDocument: string;
+		previewError: string;
+		onTabChange: (tab: TabId) => void;
 	}
 
-	let { result, ast, theme }: Props = $props();
+	let {
+		result,
+		ast,
+		theme,
+		previewStatus,
+		previewDocument,
+		previewError,
+		onTabChange,
+	}: Props = $props();
 
-	type TabId = 'js' | 'css' | 'scripts' | 'metadata' | 'diagnostics' | 'ast' | 'sourcemap';
+	type TabId =
+		| 'preview'
+		| 'js'
+		| 'css'
+		| 'scripts'
+		| 'metadata'
+		| 'diagnostics'
+		| 'ast'
+		| 'sourcemap';
 
 	const TABS: { id: TabId; label: string }[] = [
+		{ id: 'preview', label: 'Preview' },
 		{ id: 'js', label: 'JS' },
 		{ id: 'css', label: 'CSS' },
 		{ id: 'scripts', label: 'Scripts' },
@@ -37,6 +58,11 @@
 	const diagnosticCount = $derived(result?.diagnostics.length ?? 0);
 	const isCodeTab = $derived(CODE_TABS.has(active));
 
+	function selectTab(tab: TabId) {
+		active = tab;
+		onTabChange(tab);
+	}
+
 	// Arrow-key navigation for the tablist (WAI-ARIA tabs pattern).
 	async function onTabKeydown(event: KeyboardEvent) {
 		const index = TABS.findIndex((tab) => tab.id === active);
@@ -47,7 +73,7 @@
 		else if (event.key === 'End') next = TABS.length - 1;
 		else return;
 		event.preventDefault();
-		active = TABS[next].id;
+		selectTab(TABS[next].id);
 		await tick();
 		document.getElementById(`tab-${active}`)?.focus();
 	}
@@ -141,7 +167,7 @@
 				aria-selected={active === tab.id}
 				aria-controls="output-panel"
 				tabindex={active === tab.id ? 0 : -1}
-				onclick={() => (active = tab.id)}
+				onclick={() => selectTab(tab.id)}
 				onkeydown={onTabKeydown}
 			>
 				{tab.label}
@@ -156,7 +182,27 @@
 	<div class="panel" id="output-panel" role="tabpanel" aria-labelledby={`tab-${active}`} tabindex="0">
 		<div class="code-host" bind:this={host} hidden={!isCodeTab}></div>
 
-		{#if active === 'metadata'}
+		{#if active === 'preview'}
+			<div class="preview">
+				{#if previewStatus === 'ready'}
+					<iframe
+						class="preview-frame"
+						title="Rendered Astro component"
+						sandbox="allow-scripts"
+						referrerpolicy="no-referrer"
+						srcdoc={previewDocument}
+					></iframe>
+				{:else if previewStatus === 'error' || previewStatus === 'unsupported'}
+					<div class="preview-state preview-error" role="alert">
+						<p>{previewError}</p>
+					</div>
+				{:else}
+					<div class="preview-state" role="status" aria-live="polite">
+						<p>{previewStatus === 'rendering' ? 'Rendering preview…' : 'Select Preview to render.'}</p>
+					</div>
+				{/if}
+			</div>
+		{:else if active === 'metadata'}
 			<div class="structured">
 				{#if result}
 					<dl>
@@ -266,6 +312,35 @@
 	}
 	.code-host[hidden] {
 		display: none;
+	}
+	.preview,
+	.preview-frame {
+		width: 100%;
+		height: 100%;
+	}
+	.preview {
+		background: #fff;
+	}
+	.preview-frame {
+		display: block;
+		border: 0;
+	}
+	.preview-state {
+		display: grid;
+		place-items: center;
+		height: 100%;
+		padding: 1rem;
+		background: var(--bg);
+		color: var(--muted);
+		font-size: 0.85rem;
+		text-align: center;
+	}
+	.preview-state p {
+		margin: 0;
+		white-space: pre-wrap;
+	}
+	.preview-error {
+		color: var(--err);
 	}
 	:global(.code-host .cm-editor) {
 		height: 100%;

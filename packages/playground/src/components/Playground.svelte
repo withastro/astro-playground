@@ -6,6 +6,11 @@
 	import type { ParsedAst } from '../lib/compiler-protocol';
 	import { toCodeMirrorDiagnostics } from '../lib/diagnostics';
 	import { DEFAULT_COMPILE_OPTIONS } from '../lib/options';
+	import {
+		createPreviewDocument,
+		preview,
+		validatePreview,
+	} from '../lib/preview';
 	import { DEFAULT_SOURCE } from '../lib/samples';
 	import { readSharedState, shareUrl, writeSharedState } from '../lib/share';
 	import { applyTheme, initialTheme, type Theme } from '../lib/theme';
@@ -29,6 +34,12 @@
 	let errorMessage = $state('');
 	let compileMs = $state(0);
 	let shareLabel = $state('Share');
+	let previewActive = $state(false);
+	let previewStatus = $state<'idle' | 'rendering' | 'ready' | 'error' | 'unsupported'>(
+		'idle',
+	);
+	let previewDocument = $state('');
+	let previewError = $state('');
 
 	const diagnostics = $derived(
 		result ? toCodeMirrorDiagnostics(source, result.diagnostics) : [],
@@ -40,16 +51,60 @@
 	});
 
 	let runId = 0;
+	let previewRunId = 0;
 	let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+
+	async function runPreview(
+		compiled = result,
+		parsed = ast,
+		previewSource = source,
+		previewOptions = $state.snapshot(options),
+	) {
+		const current = ++previewRunId;
+		if (!compiled || !parsed) {
+			previewStatus = 'idle';
+			return;
+		}
+
+		const unsupported = validatePreview(compiled, parsed);
+		if (unsupported) {
+			preview.cancel();
+			previewStatus = 'unsupported';
+			previewError = unsupported;
+			return;
+		}
+
+		previewStatus = 'rendering';
+		previewError = '';
+		try {
+			const renderable = await compiler.compile(previewSource, {
+				...previewOptions,
+				internalURL: './runtime.js',
+				resolvePathProvided: true,
+				sourcemap: undefined,
+			});
+			if (current !== previewRunId) return;
+			const html = await preview.render(renderable);
+			if (current !== previewRunId) return;
+			previewDocument = createPreviewDocument(html, renderable.css);
+			previewStatus = 'ready';
+		} catch (error) {
+			if (current !== previewRunId) return;
+			previewStatus = 'error';
+			previewError = error instanceof Error ? error.message : String(error);
+		}
+	}
 
 	async function runCompile() {
 		const current = ++runId;
 		const start = performance.now();
+		const compileSource = source;
+		const compileOptions = $state.snapshot(options);
 		if (result) status = 'compiling';
 		try {
 			const [compiled, parsed] = await Promise.all([
-				compiler.compile(source, $state.snapshot(options)),
-				compiler.parse(source),
+				compiler.compile(compileSource, compileOptions),
+				compiler.parse(compileSource),
 			]);
 			if (current !== runId) return;
 			result = compiled;
@@ -57,6 +112,9 @@
 			compileMs = Math.round(performance.now() - start);
 			status = 'ready';
 			errorMessage = '';
+			if (previewActive) {
+				void runPreview(compiled, parsed, compileSource, compileOptions);
+			}
 		} catch (error) {
 			if (current !== runId) return;
 			errorMessage = error instanceof Error ? error.message : String(error);
@@ -71,7 +129,22 @@
 
 	function handleSourceChange(next: string) {
 		source = next;
+		if (previewActive) {
+			previewRunId++;
+			preview.cancel();
+			previewStatus = 'rendering';
+		}
 		scheduleCompile();
+	}
+
+	function handleOutputTabChange(tab: string) {
+		previewActive = tab === 'preview';
+		if (previewActive) {
+			void runPreview();
+		} else {
+			previewRunId++;
+			preview.cancel();
+		}
 	}
 
 	function toggleTheme() {
@@ -131,6 +204,7 @@
 	onDestroy(() => {
 		clearTimeout(debounceTimer);
 		compiler.dispose();
+		preview.dispose();
 	});
 </script>
 
@@ -195,7 +269,15 @@
 			onkeydown={onGutterKeydown}
 		></div>
 		<section class="pane">
-			<OutputTabs {result} {ast} {theme} />
+			<OutputTabs
+				{result}
+				{ast}
+				{theme}
+				{previewStatus}
+				{previewDocument}
+				{previewError}
+				onTabChange={handleOutputTabChange}
+			/>
 		</section>
 	</div>
 </div>
