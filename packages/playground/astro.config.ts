@@ -3,7 +3,14 @@ import cloudflare from "@astrojs/cloudflare";
 import svelte from "@astrojs/svelte";
 import { defineConfig } from "astro/config";
 import { rolldown } from "rolldown";
-import { searchForWorkspaceRoot } from "vite";
+import {
+	type Connect,
+	type Plugin,
+	type PreviewServer,
+	searchForWorkspaceRoot,
+	type UserConfig,
+	type ViteDevServer,
+} from "vite";
 
 /**
  * The Rust compiler's WASM build (`wasm32-wasip1-threads`) instantiates a
@@ -22,16 +29,17 @@ const COI_HEADERS = {
  * Astro's `server.headers`. We unshift to the front of the connect stack so it
  * runs before the Cloudflare middleware writes the response.
  */
-function crossOriginIsolation() {
-	const apply = (server) => {
+function crossOriginIsolation(): Plugin {
+	const apply = (server: PreviewServer | ViteDevServer) => {
+		const handle: Connect.NextHandleFunction = (_req, res, next) => {
+			for (const [key, value] of Object.entries(COI_HEADERS)) {
+				res.setHeader(key, value);
+			}
+			next();
+		};
 		server.middlewares.stack.unshift({
 			route: "",
-			handle: (_req, res, next) => {
-				for (const [key, value] of Object.entries(COI_HEADERS)) {
-					res.setHeader(key, value);
-				}
-				next();
-			},
+			handle,
 		});
 	};
 	return {
@@ -44,14 +52,19 @@ function crossOriginIsolation() {
 const PREVIEW_WORKER_SOURCE = "virtual:preview-worker-source";
 const RESOLVED_PREVIEW_WORKER_SOURCE = `\0${PREVIEW_WORKER_SOURCE}`;
 
-function previewWorkerSource() {
+interface PreviewWorkerBundle {
+	mainModule: string;
+	modules: Record<string, string>;
+}
+
+function previewWorkerSource(): Plugin {
 	const entryPoint = fileURLToPath(
 		new URL("./src/lib/preview-worker.ts", import.meta.url),
 	);
 	const runtimeEntryPoint = fileURLToPath(
 		new URL("./src/lib/preview-runtime.ts", import.meta.url),
 	);
-	let workerBundle;
+	let workerBundle: PreviewWorkerBundle | undefined;
 
 	return {
 		name: "playground:preview-worker-source",
@@ -126,6 +139,30 @@ function previewWorkerSource() {
 	};
 }
 
+const vite: UserConfig = {
+	plugins: [crossOriginIsolation(), previewWorkerSource()],
+	// The WASM binding ships hand-written browser glue that uses
+	// `new URL('./x.wasm', import.meta.url)` and `new Worker(new URL(...))`.
+	// Pre-bundling rewrites those URLs and breaks them, so exclude it.
+	optimizeDeps: {
+		exclude: ["@astrojs/compiler-binding-wasm32-wasi"],
+	},
+	worker: {
+		format: "es",
+	},
+	build: {
+		// CodeMirror + the compiler island are legitimately large single chunks.
+		chunkSizeWarningLimit: 2000,
+	},
+	server: {
+		fs: {
+			// In a pnpm monorepo the hoisted WASM package lives at the workspace
+			// root, outside this package — allow Vite's dev server to serve it.
+			allow: [searchForWorkspaceRoot(process.cwd())],
+		},
+	},
+};
+
 // https://astro.build/config
 export default defineConfig({
 	integrations: [svelte()],
@@ -133,27 +170,5 @@ export default defineConfig({
 	server: {
 		headers: COI_HEADERS,
 	},
-	vite: {
-		plugins: [crossOriginIsolation(), previewWorkerSource()],
-		// The WASM binding ships hand-written browser glue that uses
-		// `new URL('./x.wasm', import.meta.url)` and `new Worker(new URL(...))`.
-		// Pre-bundling rewrites those URLs and breaks them, so exclude it.
-		optimizeDeps: {
-			exclude: ["@astrojs/compiler-binding-wasm32-wasi"],
-		},
-		worker: {
-			format: "es",
-		},
-		build: {
-			// CodeMirror + the compiler island are legitimately large single chunks.
-			chunkSizeWarningLimit: 2000,
-		},
-		server: {
-			fs: {
-				// In a pnpm monorepo the hoisted WASM package lives at the workspace
-				// root, outside this package — allow Vite's dev server to serve it.
-				allow: [searchForWorkspaceRoot(process.cwd())],
-			},
-		},
-	},
+	vite,
 });

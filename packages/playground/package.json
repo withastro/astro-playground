@@ -38,7 +38,8 @@
 	"devDependencies": {
 		"@astrojs/check": "^0.9.10",
 		"@astrojs/compiler-binding": "^0.3.2",
-		"rolldown": "^1.0.3",
+		"@types/node": "^24.13.3",
+		"rolldown": "^1.2.3",
 		"typescript": "^7.0.2",
 		"vitest": "^4.1.10",
 		"wrangler": "^4.119.0"
