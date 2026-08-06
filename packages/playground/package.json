@@ -6,37 +6,41 @@
 	"scripts": {
 		"dev": "astro dev",
 		"build": "astro build",
-		"check": "astro check",
+		"check": "tsc --noEmit",
+		"test": "vitest run",
+		"types": "wrangler types src/worker-configuration.d.ts --include-runtime false",
 		"preview": "wrangler dev",
 		"astro": "astro"
 	},
 	"dependencies": {
-		"@astrojs/cloudflare": "^14.0.0",
+		"@astrojs/cloudflare": "^14.2.0",
 		"@astrojs/codemirror-astro": "workspace:*",
 		"@astrojs/compiler-binding-wasm32-wasi": "^0.2.2",
-		"@astrojs/svelte": "^9.0.0",
+		"@astrojs/svelte": "^9.0.1",
 		"@codemirror/autocomplete": "^6.20.3",
-		"@codemirror/commands": "^6.10.3",
+		"@codemirror/commands": "^6.10.4",
 		"@codemirror/lang-css": "^6.3.1",
-		"@codemirror/lang-html": "^6.4.11",
+		"@codemirror/lang-html": "^6.4.12",
 		"@codemirror/lang-javascript": "^6.2.5",
 		"@codemirror/lang-json": "^6.0.2",
-		"@codemirror/language": "^6.12.3",
+		"@codemirror/language": "^6.12.4",
 		"@codemirror/lint": "^6.9.7",
 		"@codemirror/search": "^6.7.1",
-		"@codemirror/state": "^6.6.0",
+		"@codemirror/state": "^6.7.1",
 		"@codemirror/theme-one-dark": "^6.1.3",
-		"@codemirror/view": "^6.43.1",
-		"astro": "7.0.0",
+		"@codemirror/view": "^6.43.8",
+		"astro": "7.2.0",
 		"codemirror": "^6.0.2",
 		"lz-string": "^1.5.0",
-		"svelte": "^5.56.3",
-		"vite": "^8.0.16"
+		"svelte": "^5.56.8",
+		"vite": "^8.2.1"
 	},
 	"devDependencies": {
-		"@astrojs/check": "^0.9.9",
-		"@astrojs/compiler-binding": "^0.2.2",
-		"typescript": "^5.6.0",
-		"wrangler": "^4.83.0"
+		"@astrojs/check": "^0.9.10",
+		"@astrojs/compiler-binding": "^0.3.2",
+		"rolldown": "^1.0.3",
+		"typescript": "^7.0.2",
+		"vitest": "^4.1.10",
+		"wrangler": "^4.119.0"
 	}
 }

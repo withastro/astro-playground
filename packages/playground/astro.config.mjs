@@ -1,6 +1,8 @@
+import { fileURLToPath } from "node:url";
 import cloudflare from "@astrojs/cloudflare";
 import svelte from "@astrojs/svelte";
 import { defineConfig } from "astro/config";
+import { rolldown } from "rolldown";
 import { searchForWorkspaceRoot } from "vite";
 
 /**
@@ -39,6 +41,91 @@ function crossOriginIsolation() {
 	};
 }
 
+const PREVIEW_WORKER_SOURCE = "virtual:preview-worker-source";
+const RESOLVED_PREVIEW_WORKER_SOURCE = `\0${PREVIEW_WORKER_SOURCE}`;
+
+function previewWorkerSource() {
+	const entryPoint = fileURLToPath(
+		new URL("./src/lib/preview-worker.ts", import.meta.url),
+	);
+	const runtimeEntryPoint = fileURLToPath(
+		new URL("./src/lib/preview-runtime.ts", import.meta.url),
+	);
+	let workerBundle;
+
+	return {
+		name: "playground:preview-worker-source",
+		resolveId(id) {
+			if (id === PREVIEW_WORKER_SOURCE) return RESOLVED_PREVIEW_WORKER_SOURCE;
+		},
+		async load(id) {
+			if (id !== RESOLVED_PREVIEW_WORKER_SOURCE) return;
+			this.addWatchFile(entryPoint);
+			this.addWatchFile(runtimeEntryPoint);
+			if (!workerBundle) {
+				const bundle = await rolldown({
+					input: {
+						runtime: runtimeEntryPoint,
+						worker: entryPoint,
+					},
+					external: (specifier, importer) =>
+						specifier === "./component.js" && importer === entryPoint,
+					platform: "neutral",
+					resolve: {
+						conditionNames: [
+							"workerd",
+							"worker",
+							"browser",
+							"import",
+							"default",
+						],
+						mainFields: ["module", "main"],
+					},
+					transform: {
+						define: {
+							"process.env.NODE_ENV": JSON.stringify("production"),
+						},
+					},
+				});
+				try {
+					const result = await bundle.generate({
+						chunkFileNames: "chunks/[name]-[hash].js",
+						codeSplitting: true,
+						entryFileNames: "[name].js",
+						format: "es",
+					});
+					const chunks = result.output.filter(
+						(output) => output.type === "chunk",
+					);
+					if (chunks.length !== result.output.length) {
+						throw new Error(
+							"Preview worker bundling produced a non-JavaScript asset.",
+						);
+					}
+					const entry = chunks.find(
+						(chunk) => chunk.facadeModuleId === entryPoint,
+					);
+					if (!entry)
+						throw new Error("Preview worker bundle has no entry module.");
+					workerBundle = {
+						mainModule: entry.fileName,
+						modules: Object.fromEntries(
+							chunks.map((chunk) => [chunk.fileName, chunk.code]),
+						),
+					};
+				} finally {
+					await bundle.close();
+				}
+			}
+			return `export default ${JSON.stringify(workerBundle)};`;
+		},
+		watchChange(id) {
+			if (id === entryPoint || id === runtimeEntryPoint)
+				workerBundle = undefined;
+		},
+	};
+}
+
 // https://astro.build/config
 export default defineConfig({
 	integrations: [svelte()],
@@ -47,7 +134,7 @@ export default defineConfig({
 		headers: COI_HEADERS,
 	},
 	vite: {
-		plugins: [crossOriginIsolation()],
+		plugins: [crossOriginIsolation(), previewWorkerSource()],
 		// The WASM binding ships hand-written browser glue that uses
 		// `new URL('./x.wasm', import.meta.url)` and `new Worker(new URL(...))`.
 		// Pre-bundling rewrites those URLs and breaks them, so exclude it.

@@ -38,3 +38,6 @@ jobs:
 
       - name: Check packages
         run: pnpm --filter ./packages/playground --filter ./packages/lang-astro run check
+
+      - name: Test playground
+        run: pnpm --filter playground run test
