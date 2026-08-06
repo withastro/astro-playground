@@ -1,0 +1,23 @@
+packages/playground/astro.config.mjs
+  s_75bdcd62d0f609::t_0c5f3b1bfd9fe4 1,5,44-128,137
+packages/playground/src/worker-configuration.d.ts
+  s_75bdcd62d0f609::t_047925ce469502 1-9
+pnpm-workspace.yaml
+  s_75bdcd62d0f609::t_cb26d523c835f1 8,10-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "cdc3da7cd349fbf9d31cf041a472f7e04bf875b0",
+  "prompts": {},
+  "sessions": {
+    "s_75bdcd62d0f609": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_0335bf955ffebaDDFysUpbajSc",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "ematipico <estoppa@cloudflare.com>"
+    }
+  }
+}
