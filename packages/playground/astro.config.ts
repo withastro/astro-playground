@@ -83,17 +83,6 @@ function previewWorkerSource(): Plugin {
 					},
 					external: (specifier, importer) =>
 						specifier === "./component.js" && importer === entryPoint,
-					platform: "neutral",
-					resolve: {
-						conditionNames: [
-							"workerd",
-							"worker",
-							"browser",
-							"import",
-							"default",
-						],
-						mainFields: ["module", "main"],
-					},
 					transform: {
 						define: {
 							"process.env.NODE_ENV": JSON.stringify("production"),
@@ -101,12 +90,7 @@ function previewWorkerSource(): Plugin {
 					},
 				});
 				try {
-					const result = await bundle.generate({
-						chunkFileNames: "chunks/[name]-[hash].js",
-						codeSplitting: true,
-						entryFileNames: "[name].js",
-						format: "es",
-					});
+					const result = await bundle.generate();
 					const chunks = result.output.filter(
 						(output) => output.type === "chunk",
 					);

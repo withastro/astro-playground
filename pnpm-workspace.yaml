@@ -8,5 +8,4 @@ minimumReleaseAgeExclude:
   - astro@7.2.0
   - "@biomejs/*"
   - '@astrojs/*'
-  - astro@7.2.0
   - vite@8.2.1
