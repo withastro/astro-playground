@@ -9,7 +9,7 @@
 		"check": "tsc --noEmit",
 		"test": "vitest run",
 		"types": "wrangler types src/worker-configuration.d.ts --include-runtime false",
-		"preview": "wrangler dev",
+		"preview": "wrangler deploy",
 		"astro": "astro"
 	},
 	"dependencies": {
