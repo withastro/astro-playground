@@ -1,0 +1,21 @@
+packages/playground/package.json
+  s_75bdcd62d0f609::t_bb62bb9d4fc65c 41-42
+pnpm-lock.yaml
+  s_75bdcd62d0f609::t_99cae3389b3fa9 35,50,59,98,110,118-120,122-123,129,1444-1446,2515-2517,2919,2923-2924,2926,2965,3056,3058-3059,3063-3064,3153,3183,3188,3717,3720,3724,3726,3954,3960-3961,3992-3995,4071,4077,4189,4227,4238-4239,4244,4498,4500,4916,4924,5129-5130,5147-5148,5208-5209,5281,5289,5295,5297,5299,5302,5313,5319,5321-5322
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "d79ba5dc3045d410ba6ee85ebc13c6232cabd332",
+  "prompts": {},
+  "sessions": {
+    "s_75bdcd62d0f609": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_0335bf955ffebaDDFysUpbajSc",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "ematipico <estoppa@cloudflare.com>"
+    }
+  }
+}
