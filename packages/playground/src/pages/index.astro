@@ -1,6 +1,8 @@
 ---
 export const prerender = true;
 
+import compilerPackage from '@astrojs/compiler-binding-wasm32-wasi/package.json';
+import astroPackage from 'astro/package.json';
 import LogoOnLight from '../assets/astro-icon-dark.svg';
 import LogoOnDark from '../assets/astro-icon-light-gradient.svg';
 import Playground from '../components/Playground.svelte';
@@ -31,11 +33,19 @@ import Playground from '../components/Playground.svelte';
 	<body>
 		<div class="shell">
 			<header class="site-header">
-				<a class="brand" href="https://astro.build" target="_blank" rel="noreferrer">
-					<LogoOnDark class="logo logo-on-dark" aria-hidden="true" focusable="false" />
-					<LogoOnLight class="logo logo-on-light" aria-hidden="true" focusable="false" />
-					<span>Astro Playground</span>
-				</a>
+				<div class="site-identity">
+					<a class="brand" href="https://astro.build" target="_blank" rel="noreferrer">
+						<LogoOnDark class="logo logo-on-dark" aria-hidden="true" focusable="false" />
+						<LogoOnLight class="logo logo-on-light" aria-hidden="true" focusable="false" />
+						<span>Astro Playground</span>
+					</a>
+					<div class="versions">
+						<span title="@astrojs/compiler-binding-wasm32-wasi">
+							Compiler <code>v{compilerPackage.version}</code>
+						</span>
+						<span title="astro">Runtime <code>v{astroPackage.version}</code></span>
+					</div>
+				</div>
 				<nav class="site-nav">
 					<a href="https://docs.astro.build" target="_blank" rel="noreferrer">Docs</a>
 				</nav>
@@ -104,13 +114,34 @@ import Playground from '../components/Playground.svelte';
 		border-bottom: 1px solid var(--border);
 		background: var(--panel);
 	}
+	.site-identity,
 	.brand {
 		display: flex;
 		align-items: center;
+	}
+	.site-identity {
+		gap: 0.8rem;
+		min-width: 0;
+	}
+	.brand {
 		gap: 0.55rem;
 		color: var(--fg);
 		text-decoration: none;
 		font-weight: 600;
+	}
+	.versions {
+		display: flex;
+		align-items: center;
+		gap: 0.7rem;
+		padding-left: 0.8rem;
+		border-left: 1px solid var(--border);
+		color: var(--muted);
+		font-size: 0.72rem;
+		white-space: nowrap;
+	}
+	.versions code {
+		color: var(--fg);
+		font-size: inherit;
 	}
 	.brand .logo {
 		height: 24px;
@@ -134,6 +165,11 @@ import Playground from '../components/Playground.svelte';
 	}
 	.site-nav a:hover {
 		color: var(--fg);
+	}
+	@media (max-width: 700px) {
+		.versions {
+			display: none;
+		}
 	}
 	.mount {
 		flex: 1;
