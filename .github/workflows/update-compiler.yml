@@ -1,0 +1,118 @@
+name: Update Astro compiler
+
+on:
+  repository_dispatch:
+    types: [astro-new-compiler]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Compiler version to install, without a leading v
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: update-astro-compiler
+  cancel-in-progress: true
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.compiler.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Resolve compiler version
+        id: compiler
+        env:
+          DISPATCH_VERSION: ${{ github.event.client_payload.version }}
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          version="${DISPATCH_VERSION:-$INPUT_VERSION}"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid compiler version: $version" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Update compiler
+        env:
+          COMPILER_VERSION: ${{ steps.compiler.outputs.version }}
+        run: pnpm --filter playground add "@astrojs/compiler-binding-wasm32-wasi@$COMPILER_VERSION"
+
+      - name: Save update
+        run: git diff --binary -- packages/playground/package.json pnpm-lock.yaml > compiler-update.patch
+
+      - name: Upload update
+        uses: actions/upload-artifact@v4
+        with:
+          name: compiler-update
+          path: compiler-update.patch
+          if-no-files-found: error
+          retention-days: 1
+
+  pull-request:
+    needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Download update
+        uses: actions/download-artifact@v4
+        with:
+          name: compiler-update
+
+      - name: Apply update
+        run: git apply compiler-update.patch
+
+      - name: Create pull request
+        id: pr
+        env:
+          COMPILER_VERSION: ${{ needs.prepare.outputs.version }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          branch="chore/update-astro-compiler-$COMPILER_VERSION-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch --create "$branch"
+          git add packages/playground/package.json pnpm-lock.yaml
+          git commit --message "chore: update Astro compiler to v$COMPILER_VERSION"
+          git push --set-upstream origin "$branch"
+
+          url="$(gh pr create \
+            --base main \
+            --head "$branch" \
+            --title "chore: update Astro compiler to v$COMPILER_VERSION" \
+            --body "Updates \`@astrojs/compiler-binding-wasm32-wasi\` to v$COMPILER_VERSION.")"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Merge pull request
+        if: steps.pr.outputs.url != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ steps.pr.outputs.url }}
+        run: gh pr merge "$PR_URL" --squash --delete-branch
