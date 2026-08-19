@@ -149,6 +149,7 @@ const vite: UserConfig = {
 
 // https://astro.build/config
 export default defineConfig({
+	site: "https://play.astro.build",
 	integrations: [svelte()],
 	adapter: cloudflare(),
 	server: {
