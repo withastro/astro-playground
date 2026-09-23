@@ -18,3 +18,6 @@ declare module "cloudflare:workers" {
 declare module "@astrojs/compiler-binding-wasm32-wasi" {
 	export * from "@astrojs/compiler-binding";
 }
+
+// The WASM runtime does not publish TypeScript declarations.
+declare module "@napi-rs/wasm-runtime";

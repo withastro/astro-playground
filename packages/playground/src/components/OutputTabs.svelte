@@ -13,6 +13,7 @@
 	interface Props {
 		result: CompileResult | null;
 		ast: ParsedAst | null;
+		tsx: string;
 		theme: Theme;
 		previewStatus: 'idle' | 'rendering' | 'ready' | 'error' | 'unsupported';
 		previewDocument: string;
@@ -23,6 +24,7 @@
 	let {
 		result,
 		ast,
+		tsx,
 		theme,
 		previewStatus,
 		previewDocument,
@@ -33,6 +35,7 @@
 	type TabId =
 		| 'preview'
 		| 'js'
+		| 'tsx'
 		| 'css'
 		| 'scripts'
 		| 'metadata'
@@ -43,6 +46,7 @@
 	const TABS: { id: TabId; label: string }[] = [
 		{ id: 'preview', label: 'Preview' },
 		{ id: 'js', label: 'JS' },
+		{ id: 'tsx', label: 'TSX' },
 		{ id: 'css', label: 'CSS' },
 		{ id: 'scripts', label: 'Scripts' },
 		{ id: 'metadata', label: 'Metadata' },
@@ -51,7 +55,7 @@
 		{ id: 'sourcemap', label: 'Source map' },
 	];
 
-	const CODE_TABS = new Set<TabId>(['js', 'css', 'scripts', 'ast', 'sourcemap']);
+	const CODE_TABS = new Set<TabId>(['js', 'tsx', 'css', 'scripts', 'ast', 'sourcemap']);
 
 	let active = $state<TabId>('js');
 
@@ -99,6 +103,8 @@
 		switch (tab) {
 			case 'js':
 				return { text: result.code, language: 'javascript' };
+			case 'tsx':
+				return { text: tsx, language: 'javascript' };
 			case 'css':
 				return {
 					text:
