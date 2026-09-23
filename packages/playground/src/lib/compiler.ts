@@ -150,6 +150,10 @@ export class CompilerClient {
 		return this.#call<ParsedAst>({ type: "parse", source });
 	}
 
+	convertToTsx(source: string, filename?: string): Promise<string> {
+		return this.#call<string>({ type: "convertToTsx", source, filename });
+	}
+
 	extractStyles(source: string): Promise<StyleBlock[]> {
 		return this.#call<StyleBlock[]>({ type: "extractStyles", source });
 	}

@@ -16,6 +16,7 @@ export interface ParsedAst {
 export type CompilerRequest =
 	| { type: "compile"; id: number; source: string; options?: CompileOptions }
 	| { type: "parse"; id: number; source: string }
+	| { type: "convertToTsx"; id: number; source: string; filename?: string }
 	| { type: "extractStyles"; id: number; source: string };
 
 export type CompilerRequestPayload = CompilerRequest extends infer Request

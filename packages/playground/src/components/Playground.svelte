@@ -30,6 +30,7 @@
 
 	let result = $state<CompileResult | null>(null);
 	let ast = $state<ParsedAst | null>(null);
+	let tsx = $state('');
 	let status = $state<'loading' | 'compiling' | 'ready' | 'error'>('loading');
 	let errorMessage = $state('');
 	let compileMs = $state(0);
@@ -80,13 +81,14 @@
 			const renderable = await compiler.compile(previewSource, {
 				...previewOptions,
 				internalURL: './runtime.js',
+				inlineComponentAssets: true,
 				resolvePathProvided: true,
 				sourcemap: undefined,
 			});
 			if (current !== previewRunId) return;
 			const html = await preview.render(renderable);
 			if (current !== previewRunId) return;
-			previewDocument = createPreviewDocument(html, renderable.css);
+			previewDocument = createPreviewDocument(html);
 			previewStatus = 'ready';
 		} catch (error) {
 			if (current !== previewRunId) return;
@@ -102,13 +104,15 @@
 		const compileOptions = $state.snapshot(options);
 		if (result) status = 'compiling';
 		try {
-			const [compiled, parsed] = await Promise.all([
+			const [compiled, parsed, converted] = await Promise.all([
 				compiler.compile(compileSource, compileOptions),
 				compiler.parse(compileSource),
+				compiler.convertToTsx(compileSource, compileOptions.filename),
 			]);
 			if (current !== runId) return;
 			result = compiled;
 			ast = parsed;
+			tsx = converted;
 			compileMs = Math.round(performance.now() - start);
 			status = 'ready';
 			errorMessage = '';
@@ -272,6 +276,7 @@
 			<OutputTabs
 				{result}
 				{ast}
+				{tsx}
 				{theme}
 				{previewStatus}
 				{previewDocument}

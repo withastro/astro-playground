@@ -10,9 +10,6 @@ interface ActiveRender {
 	timer: ReturnType<typeof setTimeout>;
 }
 
-const STYLE_IMPORT =
-	/^import\s+["'](?:[^"'\\]|\\.)*\?astro&type=style&(?:[^"'\\]|\\.)*["'];?\s*$/gm;
-
 interface AstNode {
 	type?: unknown;
 	source?: {
@@ -84,7 +81,7 @@ export function validatePreview(
 	return null;
 }
 
-export function createPreviewDocument(html: string, css: string[]): string {
+export function createPreviewDocument(html: string): string {
 	const document = new DOMParser().parseFromString(html, "text/html");
 	const csp = document.createElement("meta");
 	csp.httpEquiv = "Content-Security-Policy";
@@ -104,15 +101,9 @@ export function createPreviewDocument(html: string, css: string[]): string {
 	viewport.name = "viewport";
 	viewport.content = "width=device-width, initial-scale=1";
 
-	const style = document.createElement("style");
-	style.textContent = css.join("\n\n");
-	document.head.prepend(csp, viewport, style);
+	document.head.prepend(csp, viewport);
 
 	return `<!doctype html>\n${document.documentElement.outerHTML}`;
-}
-
-export function preparePreviewCode(code: string): string {
-	return code.replace(STYLE_IMPORT, "");
 }
 
 export interface PreviewClientOptions {
@@ -145,7 +136,7 @@ export class PreviewClient {
 		this.#active = { controller, timer };
 
 		const request: PreviewRenderRequest = {
-			code: preparePreviewCode(result.code),
+			code: result.code,
 			scripts: result.scripts.map((script) =>
 				script.type === "inline"
 					? { type: "inline", code: script.code }

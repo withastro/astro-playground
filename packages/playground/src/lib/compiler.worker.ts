@@ -7,14 +7,15 @@
 // a pathological infinite loop never freezes the UI: the main thread can simply
 // terminate and respawn this worker.
 //
-// The binding import below uses a top-level `await` to fetch + instantiate the
-// WASM module. Because of that, the main thread must wait for the `ready`
+// The WASM imports use top-level `await` to fetch + instantiate their modules.
+// Because of that, the main thread must wait for the `ready`
 // message before posting requests (see `compiler.ts`).
 import {
 	compileAstroSync,
 	extractStylesSync,
 	parseAstroSync,
 } from "@astrojs/compiler-binding-wasm32-wasi";
+import { convertToTsx } from "./astro2tsx.browser";
 import type { CompilerRequest, CompilerResponse } from "./compiler-protocol";
 
 const ctx = self as unknown as DedicatedWorkerGlobalScope;
@@ -50,6 +51,11 @@ ctx.onmessage = (event: MessageEvent<CompilerRequest>) => {
 				};
 				break;
 			}
+			case "convertToTsx":
+				result = convertToTsx(request.source, {
+					filename: request.filename,
+				}).code;
+				break;
 			case "extractStyles":
 				result = extractStylesSync(request.source);
 				break;

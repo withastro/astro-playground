@@ -1,7 +1,7 @@
 import { compileAstroSync, parseAstroSync } from "@astrojs/compiler-binding";
 import { describe, expect, it } from "vitest";
 import type { ParsedAst } from "./compiler-protocol";
-import { PreviewClient, preparePreviewCode, validatePreview } from "./preview";
+import { PreviewClient, validatePreview } from "./preview";
 
 const filename = "index.astro";
 
@@ -9,6 +9,7 @@ function compile(source: string, renderable = false) {
 	return compileAstroSync(source, {
 		filename,
 		internalURL: renderable ? "./runtime.js" : undefined,
+		inlineComponentAssets: renderable || undefined,
 		resolvePathProvided: renderable || undefined,
 	});
 }
@@ -43,18 +44,25 @@ describe("preview validation", () => {
 });
 
 describe("preview client", () => {
-	it("prepares compiler output for the Dynamic Worker", () => {
+	it("emits component assets in the Dynamic Worker module", () => {
 		const result = compile(
-			`<h1>Hello</h1><style>h1 { color: red; }</style>`,
+			`<h1>Hello</h1><style>h1 { color: red; }</style><script>console.log("hello")</script>`,
 			true,
 		);
-		const prepared = preparePreviewCode(result.code);
 
-		expect(prepared).toContain('from "./runtime.js"');
-		expect(prepared).not.toContain("astro&type=style");
+		expect(result.code).toContain('from "./runtime.js"');
+		expect(result.code).not.toContain("astro&type=style");
+		expect(result.code).toContain("<style>h1:where(");
+		expect(result.code).toContain("astro&type=script&index=0");
+		expect(result.code.indexOf("<style>")).toBeLessThan(
+			result.code.indexOf("<h1"),
+		);
+		expect(result.code.indexOf("<h1")).toBeLessThan(
+			result.code.indexOf("astro&type=script&index=0"),
+		);
 	});
 
-	it("posts prepared compiler output to the render endpoint", async () => {
+	it("posts compiler output to the render endpoint", async () => {
 		let request: RequestInit | undefined;
 		const client = new PreviewClient({
 			fetch: async (_input, init) => {
@@ -63,7 +71,7 @@ describe("preview client", () => {
 			},
 		});
 		const result = compile(
-			`<h1>Hello</h1><style>h1 { color: red; }</style>`,
+			`<h1>Hello</h1><style>h1 { color: red; }</style><script>console.log("hello")</script>`,
 			true,
 		);
 
@@ -72,6 +80,8 @@ describe("preview client", () => {
 		const body = JSON.parse(String(request?.body));
 		expect(body.code).toContain('from "./runtime.js"');
 		expect(body.code).not.toContain("astro&type=style");
+		expect(body.code).toContain("<style>h1:where(");
+		expect(body.code).toContain("astro&type=script&index=0");
 	});
 
 	it("calls the default fetch with the global receiver", async () => {
