@@ -16,7 +16,7 @@
 		"@astrojs/astro2tsx": "^0.1.1",
 		"@astrojs/cloudflare": "^14.2.0",
 		"@astrojs/codemirror-astro": "workspace:*",
-		"@astrojs/compiler-binding-wasm32-wasi": "^0.5.0",
+		"@astrojs/compiler-binding-wasm32-wasi": "^0.5.3",
 		"@astrojs/svelte": "^9.0.1",
 		"@codemirror/autocomplete": "^6.20.3",
 		"@codemirror/commands": "^6.10.4",
